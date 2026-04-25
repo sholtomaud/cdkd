@@ -10,7 +10,6 @@ import {
 import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { Synthesizer } from '../../synthesis/synthesizer.js';
-import { AssetPublisher } from '../../assets/asset-publisher.js';
 import { S3StateBackend } from '../../state/s3-state-backend.js';
 import { LockManager } from '../../state/lock-manager.js';
 import { DagBuilder } from '../../analyzer/dag-builder.js';
@@ -49,7 +48,6 @@ async function deployCommand(
       ...(Object.keys(context).length > 0 && { context }),
     });
     const { stacks: allStacks } = result;
-    const _assetPublisher = new AssetPublisher();
     const stateConfig = { bucket: stateBucket, prefix: options['state-prefix'] };
     const dagBuilder = new DagBuilder();
     const diffCalculator = new DiffCalculator();

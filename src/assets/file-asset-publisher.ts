@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { S3Client, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import type { FileAsset } from '../types/assets.js';
+import { getLogger } from '../utils/logger.js';
 
 export class FileAssetPublisher {
   private logger = getLogger().child('FileAssetPublisher');
