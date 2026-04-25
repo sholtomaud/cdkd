@@ -23,7 +23,7 @@ export const stateOptions: CliOption[] = [
   { name: 'state-prefix', description: 'S3 key prefix', type: 'string', default: 'cdkd' },
 ];
 export const stackOptions: CliOption[] = [
-  { name: 'stack', description: 'Stack name', type: 'string' }
+  { name: 'stack', description: 'Stack name', type: 'string' },
 ];
 export const deployOptions: CliOption[] = [
   { name: 'concurrency', description: 'Concurrency', type: 'number', default: 10 },
@@ -35,5 +35,5 @@ export const contextOptions: CliOption[] = [
   { name: 'context', short: 'c', description: 'Set context', type: 'array' },
 ];
 export const destroyOptions: CliOption[] = [
-  { name: 'force', description: 'Skip confirmation', type: 'boolean', default: false }
+  { name: 'force', description: 'Skip confirmation', type: 'boolean', default: false },
 ];

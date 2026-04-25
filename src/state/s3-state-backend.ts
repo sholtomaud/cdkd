@@ -18,7 +18,7 @@ import { StateError } from '../utils/error-handler.js';
 export class S3StateBackend {
   private logger = getLogger().child('S3StateBackend');
 
-    private s3Client: S3Client;
+  private s3Client: S3Client;
   private config: StateBackendConfig;
 
   constructor(s3Client: S3Client, config: StateBackendConfig) {

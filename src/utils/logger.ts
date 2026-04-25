@@ -31,7 +31,7 @@ function formatTimestamp(): string {
  * - compact (info level): clean output without timestamps or prefixes
  */
 export class ConsoleLogger implements Logger {
-    private level: LogLevel;
+  private level: LogLevel;
   private useColors: boolean;
 
   constructor(level: LogLevel = 'info', useColors: boolean = true) {

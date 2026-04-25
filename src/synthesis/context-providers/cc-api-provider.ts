@@ -17,7 +17,7 @@ import { getLogger } from '../../utils/logger.js';
 export class CcApiContextProvider implements ContextProvider {
   private logger = getLogger().child('CcApiContextProvider');
 
-    private awsConfig: ContextProviderAwsConfig | undefined;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
     this.awsConfig = awsConfig ?? undefined;

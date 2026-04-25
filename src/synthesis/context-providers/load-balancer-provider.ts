@@ -15,7 +15,7 @@ import { getLogger } from '../../utils/logger.js';
 export class LoadBalancerContextProvider implements ContextProvider {
   private logger = getLogger().child('LoadBalancerContextProvider');
 
-    private awsConfig: ContextProviderAwsConfig | undefined;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
     this.awsConfig = awsConfig ?? undefined;
@@ -75,7 +75,7 @@ export class LoadBalancerContextProvider implements ContextProvider {
 export class LoadBalancerListenerContextProvider implements ContextProvider {
   private logger = getLogger().child('LoadBalancerListenerContextProvider');
 
-    private awsConfig: ContextProviderAwsConfig | undefined;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
     this.awsConfig = awsConfig ?? undefined;

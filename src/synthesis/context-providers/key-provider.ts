@@ -11,7 +11,7 @@ import { getLogger } from '../../utils/logger.js';
 export class KeyContextProvider implements ContextProvider {
   private logger = getLogger().child('KeyContextProvider');
 
-    private awsConfig: ContextProviderAwsConfig | undefined;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
     this.awsConfig = awsConfig ?? undefined;

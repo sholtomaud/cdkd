@@ -15,7 +15,7 @@ import { getLogger } from '../../utils/logger.js';
 export class HostedZoneContextProvider implements ContextProvider {
   private logger = getLogger().child('HostedZoneContextProvider');
 
-    private awsConfig: ContextProviderAwsConfig | undefined;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
     this.awsConfig = awsConfig ?? undefined;

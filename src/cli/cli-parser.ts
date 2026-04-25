@@ -50,7 +50,7 @@ export class CliParser {
       const arg = args[i]!;
       if (arg.startsWith('-')) {
         const key = arg.replace(/^-+/, '');
-        const optDef = optionsDef.find(o => o.name === key || o.short === key);
+        const optDef = optionsDef.find((o) => o.name === key || o.short === key);
         if (optDef) {
           if (optDef.type === 'boolean') options[optDef.name] = true;
           else options[optDef.name] = args[++i];

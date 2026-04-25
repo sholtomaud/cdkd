@@ -17,10 +17,7 @@ import * as readline from 'node:readline/promises';
 import { resolveStateBucketWithDefault } from '../config-loader.js';
 import type { CliCommand } from '../cli-parser.js';
 
-async function destroyCommand(
-  _stackArgs: string[],
-  options: any
-): Promise<void> {
+async function destroyCommand(_stackArgs: string[], options: any): Promise<void> {
   const logger = getLogger();
   if (options.verbose) logger.setLevel('debug');
   const region = process.env['AWS_REGION'] || 'us-east-1';
@@ -28,8 +25,14 @@ async function destroyCommand(
   const awsClients = new AwsClients({ region });
   setAwsClients(awsClients);
   try {
-    const stateBackend = new S3StateBackend(awsClients.s3, { bucket: stateBucket, prefix: options['state-prefix'] });
-    const lockManager = new LockManager(awsClients.s3, { bucket: stateBucket, prefix: options['state-prefix'] });
+    const stateBackend = new S3StateBackend(awsClients.s3, {
+      bucket: stateBucket,
+      prefix: options['state-prefix'],
+    });
+    const lockManager = new LockManager(awsClients.s3, {
+      bucket: stateBucket,
+      prefix: options['state-prefix'],
+    });
     const providerRegistry = new ProviderRegistry();
     registerAllProviders(providerRegistry);
     const stacks = await stateBackend.listStacks();
@@ -45,7 +48,12 @@ async function destroyCommand(
       if (stateResult) {
         for (const [logicalId, resource] of Object.entries(stateResult.state.resources)) {
           const provider = providerRegistry.getProvider(resource.resourceType);
-          await provider.delete(logicalId, resource.physicalId, resource.resourceType, resource.properties);
+          await provider.delete(
+            logicalId,
+            resource.physicalId,
+            resource.resourceType,
+            resource.properties
+          );
         }
         await stateBackend.deleteState(stackName);
       }
@@ -60,7 +68,14 @@ export function createDestroyCommand(): CliCommand {
   return {
     name: 'destroy',
     description: 'Destroy stacks',
-    options: [...commonOptions, ...appOptions, ...stateOptions, ...stackOptions, ...destroyOptions, ...contextOptions],
+    options: [
+      ...commonOptions,
+      ...appOptions,
+      ...stateOptions,
+      ...stackOptions,
+      ...destroyOptions,
+      ...contextOptions,
+    ],
     action: withErrorHandling(destroyCommand),
   };
 }

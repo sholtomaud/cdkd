@@ -1,6 +1,4 @@
-import {
-  commonOptions,
-} from '../options.js';
+import { commonOptions } from '../options.js';
 import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
@@ -81,33 +79,46 @@ async function bootstrapCommand(
       await s3Client.send(new CreateBucketCommand(createBucketParams));
       logger.info(`✓ Created S3 bucket: ${bucketName}`);
     }
-    await s3Client.send(new PutBucketVersioningCommand({
+    await s3Client.send(
+      new PutBucketVersioningCommand({
         Bucket: bucketName,
         VersioningConfiguration: { Status: 'Enabled' },
-    }));
+      })
+    );
     logger.info('✓ Enabled bucket versioning');
-    await s3Client.send(new PutBucketEncryptionCommand({
+    await s3Client.send(
+      new PutBucketEncryptionCommand({
         Bucket: bucketName,
         ServerSideEncryptionConfiguration: {
-          Rules: [{ ApplyServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' }, BucketKeyEnabled: true }],
+          Rules: [
+            {
+              ApplyServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' },
+              BucketKeyEnabled: true,
+            },
+          ],
         },
-    }));
+      })
+    );
     logger.info('✓ Enabled bucket encryption (AES-256)');
     const bucketPolicy = {
       Version: '2012-10-17',
-      Statement: [{
+      Statement: [
+        {
           Sid: 'DenyExternalAccess',
           Effect: 'Deny',
           Principal: '*',
           Action: 's3:*',
           Resource: [`arn:aws:s3:::${bucketName}`, `arn:aws:s3:::${bucketName}/*`],
           Condition: { StringNotEquals: { 'aws:PrincipalAccount': accountId } },
-      }],
+        },
+      ],
     };
-    await s3Client.send(new PutBucketPolicyCommand({
+    await s3Client.send(
+      new PutBucketPolicyCommand({
         Bucket: bucketName,
         Policy: JSON.stringify(bucketPolicy),
-    }));
+      })
+    );
     logger.info('✓ Set bucket policy (deny external access)');
     logger.info('\n✓ Bootstrap completed successfully');
   } finally {

@@ -173,7 +173,7 @@ export class AssetPublisher {
         data.cdkOutputDir,
         data.accountId,
         data.region,
-        (data as FileAssetNodeData).profile
+        data.profile
       );
     } else if (data.kind === 'docker-build') {
       await this.dockerPublisher.build(data.asset, data.cdkOutputDir, data.localTag);
