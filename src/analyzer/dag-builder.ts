@@ -9,6 +9,7 @@ export class DagBuilder {
   private parser = new TemplateParser();
 
   buildGraph(template: CloudFormationTemplate): Graph {
+    this.logger.debug('Building DAG for template');
     const graph = new Graph({ directed: true });
     const resourceIds = this.parser.getResourceIds(template);
     resourceIds.forEach((logicalId) => {

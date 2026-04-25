@@ -15,7 +15,7 @@ import { registerAllProviders } from '../../provisioning/register-providers.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import * as readline from 'node:readline/promises';
 import { resolveStateBucketWithDefault } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
 async function destroyCommand(
   _stackArgs: string[],

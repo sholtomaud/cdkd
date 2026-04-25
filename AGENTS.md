@@ -1,6 +1,6 @@
 # Agent Instructions for cdkd
 
-This project is optimized for Node.js 25+ and uses native TypeScript support via `--experimental-strip-types`.
+This project is optimized for Node.js 25+ and uses native TypeScript support.
 
 ## Standards and Conventions
 

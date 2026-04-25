@@ -2,7 +2,7 @@ import { commonOptions } from '../options.js';
 import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { AssetPublisher } from '../../assets/asset-publisher.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
 async function publishAssetsCommand(
   _args: string[],

@@ -5,7 +5,7 @@ import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import { getDefaultStateBucketName } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 import {
   CreateBucketCommand,
   HeadBucketCommand,

@@ -21,7 +21,7 @@ import { DeployEngine } from '../../deployment/deploy-engine.js';
 import { WorkGraph } from '../../deployment/work-graph.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import { resolveApp, resolveStateBucketWithDefault } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
 async function deployCommand(
   _stacks: string[],
@@ -49,7 +49,7 @@ async function deployCommand(
       ...(Object.keys(context).length > 0 && { context }),
     });
     const { stacks: allStacks } = result;
-    const assetPublisher = new AssetPublisher();
+    const _assetPublisher = new AssetPublisher();
     const stateConfig = { bucket: stateBucket, prefix: options['state-prefix'] };
     const dagBuilder = new DagBuilder();
     const diffCalculator = new DiffCalculator();

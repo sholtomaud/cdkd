@@ -19,10 +19,10 @@ import { getLogger } from '../../utils/logger.js';
 export class VpcContextProvider implements ContextProvider {
   private logger = getLogger().child('VpcContextProvider');
 
-    private awsConfig?: ContextProviderAwsConfig;
+    private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
-    this.awsConfig = awsConfig;
+    this.awsConfig = awsConfig ?? undefined;
   }
 
   async resolve(props: Record<string, unknown>): Promise<unknown> {

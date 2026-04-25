@@ -5,15 +5,19 @@ import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { S3Client, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import type { FileAsset } from '../types/assets.js';
-import { getLogger } from '../utils/logger.js';
+
 export class FileAssetPublisher {
   private logger = getLogger().child('FileAssetPublisher');
-  async publish(assetHash: string, asset: FileAsset, cdkOutputDir: string, accountId: string, region: string): Promise<void> {
+  async publish(assetHash: string, asset: FileAsset, cdkOutputDir: string, accountId: string, region: string, profile?: string): Promise<void> {
+    this.logger.debug(`Publishing asset ${assetHash}`);
     for (const [, dest] of Object.entries(asset.destinations)) {
       const bucketName = this.resolvePlaceholders(dest.bucketName, accountId, region);
       const objectKey = this.resolvePlaceholders(dest.objectKey, accountId, region);
       const destRegion = dest.region ? this.resolvePlaceholders(dest.region, accountId, region) : region;
-      const client = new S3Client({ region: destRegion });
+      const client = new S3Client({
+        region: destRegion,
+        ...(profile && { profile })
+      });
       try {
         if (await this.objectExists(client, bucketName, objectKey)) continue;
         const sourcePath = join(cdkOutputDir, asset.source.path);

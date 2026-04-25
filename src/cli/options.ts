@@ -1,4 +1,4 @@
-import { CliOption } from './cli-parser.js';
+import type { CliOption } from './cli-parser.js';
 export function parseContextOptions(contextArgs?: string[]): Record<string, string> {
   const context: Record<string, string> = {};
   if (contextArgs) {

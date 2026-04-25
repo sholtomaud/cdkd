@@ -17,10 +17,10 @@ import { getLogger } from '../../utils/logger.js';
 export class CcApiContextProvider implements ContextProvider {
   private logger = getLogger().child('CcApiContextProvider');
 
-    private awsConfig?: ContextProviderAwsConfig;
+    private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
-    this.awsConfig = awsConfig;
+    this.awsConfig = awsConfig ?? undefined;
   }
 
   async resolve(props: Record<string, unknown>): Promise<unknown> {

@@ -4,7 +4,7 @@ import { withErrorHandling } from '../../utils/error-handler.js';
 import { LockManager } from '../../state/lock-manager.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import { resolveStateBucketWithDefault } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
 async function forceUnlockCommand(
   stackArgs: string[],
