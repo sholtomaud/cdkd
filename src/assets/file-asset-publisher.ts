@@ -91,12 +91,12 @@ export class FileAssetPublisher {
       try {
         execSync(`rm -f "${tempZip}"`);
       } catch {
-        // Ignore removal errors
+        // Ignore
       }
     }
   }
 
   private resolvePlaceholders(value: string, accountId: string, region: string): string {
-    return value.replace(/\$\{AWS::AccountId\}/g, accountId).replace(/\$\{AWS::Region\}/g, region);
+    return value.replace(/\${AWS::AccountId}/g, accountId).replace(/\${AWS::Region}/g, region);
   }
 }
