@@ -11,7 +11,11 @@ import { getLogger } from '../../utils/logger.js';
 export class SSMContextProvider implements ContextProvider {
   private logger = getLogger().child('SSMContextProvider');
 
-  constructor(private awsConfig?: ContextProviderAwsConfig) {}
+    private awsConfig?: ContextProviderAwsConfig;
+
+  constructor(awsConfig?: ContextProviderAwsConfig) {
+    this.awsConfig = awsConfig;
+  }
 
   async resolve(props: Record<string, unknown>): Promise<unknown> {
     const region = (props['region'] as string) || this.awsConfig?.region;

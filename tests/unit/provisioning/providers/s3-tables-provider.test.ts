@@ -1,32 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-s3tables', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-s3tables')>();
   return {
     ...actual,
-    S3TablesClient: vi.fn().mockImplementation(() => ({
+    S3TablesClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
@@ -42,7 +43,7 @@ import {
   ListTablesCommand,
   NotFoundException,
 } from '@aws-sdk/client-s3tables';
-import { S3TablesProvider } from '../../../../src/provisioning/providers/s3-tables-provider.js';
+import { S3TablesProvider } from '../../../../src/provisioning/providers/s3-tables-provider.ts';
 
 describe('S3TablesProvider', () => {
   let provider: S3TablesProvider;
@@ -63,8 +64,8 @@ describe('S3TablesProvider', () => {
         TableBucketName: 'my-table-bucket',
       });
 
-      expect(result.physicalId).toBe(arn);
-      expect(result.attributes).toEqual({ TableBucketARN: arn });
+      assert.strictEqual(result.physicalId, arn);
+      assert.deepStrictEqual(result.attributes, { TableBucketARN: arn });
       expect(mockSend).toHaveBeenCalledWith(expect.any(CreateTableBucketCommand));
     });
   });
@@ -137,8 +138,8 @@ describe('S3TablesProvider', () => {
         Namespace: ['my-namespace'],
       });
 
-      expect(result.physicalId).toBe(`${tableBucketARN}|my-namespace`);
-      expect(result.attributes).toEqual({});
+      assert.strictEqual(result.physicalId, `${tableBucketARN}|my-namespace`);
+      assert.deepStrictEqual(result.attributes, {});
       expect(mockSend).toHaveBeenCalledWith(expect.any(CreateNamespaceCommand));
     });
   });
@@ -170,8 +171,8 @@ describe('S3TablesProvider', () => {
         Format: 'ICEBERG',
       });
 
-      expect(result.physicalId).toBe(`${tableBucketARN}|my-namespace|my-table`);
-      expect(result.attributes).toEqual({});
+      assert.strictEqual(result.physicalId, `${tableBucketARN}|my-namespace|my-table`);
+      assert.deepStrictEqual(result.attributes, {});
       expect(mockSend).toHaveBeenCalledWith(expect.any(CreateTableCommand));
     });
   });
@@ -203,7 +204,7 @@ describe('S3TablesProvider', () => {
         {}
       );
 
-      expect(result).toEqual({ physicalId, wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId, wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -217,7 +218,7 @@ describe('S3TablesProvider', () => {
         {}
       );
 
-      expect(result).toEqual({ physicalId, wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId, wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -225,7 +226,7 @@ describe('S3TablesProvider', () => {
       const physicalId = 'arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket|ns|tbl';
       const result = await provider.update('MyTbl', physicalId, 'AWS::S3Tables::Table', {}, {});
 
-      expect(result).toEqual({ physicalId, wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId, wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
   });

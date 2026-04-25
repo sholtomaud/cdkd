@@ -1,36 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 vi.mock('@aws-sdk/client-wafv2', async () => {
   const actual = await vi.importActual('@aws-sdk/client-wafv2');
   return {
     ...actual,
-    WAFV2Client: vi.fn().mockImplementation(() => ({ send: mockSend })),
+    WAFV2Client: mock.fn().mockImplementation(() => ({ send: mockSend })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { WAFv2WebACLProvider } from '../../../src/provisioning/providers/wafv2-provider.js';
+import { WAFv2WebACLProvider } from '../../../src/provisioning/providers/wafv2-provider.ts';
 
 const TEST_ARN =
   'arn:aws:wafv2:us-east-1:123456789012:regional/webacl/my-acl/abc-123-def';
@@ -65,7 +66,7 @@ describe('WAFv2WebACLProvider', () => {
         },
       });
 
-      expect(result.physicalId).toBe(TEST_ARN);
+      assert.strictEqual(result.physicalId, TEST_ARN);
       expect(result.attributes).toEqual({
         Arn: TEST_ARN,
         Id: TEST_ID,
@@ -74,9 +75,9 @@ describe('WAFv2WebACLProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateWebACLCommand');
-      expect(createCall.input.Name).toBe('my-acl');
-      expect(createCall.input.Scope).toBe('REGIONAL');
+      assert.strictEqual(createCall.constructor.name, 'CreateWebACLCommand');
+      assert.strictEqual(createCall.input.Name, 'my-acl');
+      assert.strictEqual(createCall.input.Scope, 'REGIONAL');
     });
 
     it('should throw ProvisioningError on failure', async () => {
@@ -135,8 +136,8 @@ describe('WAFv2WebACLProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe(TEST_ARN);
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, TEST_ARN);
+      assert.strictEqual(result.wasReplaced, false);
       expect(result.attributes).toEqual({
         Arn: TEST_ARN,
         Id: TEST_ID,
@@ -145,13 +146,13 @@ describe('WAFv2WebACLProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.constructor.name).toBe('GetWebACLCommand');
-      expect(getCall.input.Name).toBe('my-acl');
-      expect(getCall.input.Id).toBe(TEST_ID);
+      assert.strictEqual(getCall.constructor.name, 'GetWebACLCommand');
+      assert.strictEqual(getCall.input.Name, 'my-acl');
+      assert.strictEqual(getCall.input.Id, TEST_ID);
 
       const updateCall = mockSend.mock.calls[1][0];
-      expect(updateCall.constructor.name).toBe('UpdateWebACLCommand');
-      expect(updateCall.input.LockToken).toBe('lock-token-123');
+      assert.strictEqual(updateCall.constructor.name, 'UpdateWebACLCommand');
+      assert.strictEqual(updateCall.input.LockToken, 'lock-token-123');
     });
 
     it('should require replacement when Name changes', async () => {
@@ -193,12 +194,12 @@ describe('WAFv2WebACLProvider', () => {
 
       // Provider uses ARN-derived name, not the new property Name
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.input.Name).toBe('my-acl');
+      assert.strictEqual(getCall.input.Name, 'my-acl');
 
       const updateCall = mockSend.mock.calls[1][0];
-      expect(updateCall.input.Name).toBe('my-acl');
+      assert.strictEqual(updateCall.input.Name, 'my-acl');
 
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.wasReplaced, false);
     });
 
     it('should require replacement when Scope changes', async () => {
@@ -240,9 +241,9 @@ describe('WAFv2WebACLProvider', () => {
 
       // Provider uses ARN-derived scope (REGIONAL from the ARN), not the new property
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.input.Scope).toBe('REGIONAL');
+      assert.strictEqual(getCall.input.Scope, 'REGIONAL');
 
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.wasReplaced, false);
     });
   });
 
@@ -261,17 +262,17 @@ describe('WAFv2WebACLProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.constructor.name).toBe('GetWebACLCommand');
-      expect(getCall.input.Name).toBe('my-acl');
-      expect(getCall.input.Scope).toBe('REGIONAL');
-      expect(getCall.input.Id).toBe(TEST_ID);
+      assert.strictEqual(getCall.constructor.name, 'GetWebACLCommand');
+      assert.strictEqual(getCall.input.Name, 'my-acl');
+      assert.strictEqual(getCall.input.Scope, 'REGIONAL');
+      assert.strictEqual(getCall.input.Id, TEST_ID);
 
       const deleteCall = mockSend.mock.calls[1][0];
-      expect(deleteCall.constructor.name).toBe('DeleteWebACLCommand');
-      expect(deleteCall.input.Name).toBe('my-acl');
-      expect(deleteCall.input.Scope).toBe('REGIONAL');
-      expect(deleteCall.input.Id).toBe(TEST_ID);
-      expect(deleteCall.input.LockToken).toBe('lock-token-456');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteWebACLCommand');
+      assert.strictEqual(deleteCall.input.Name, 'my-acl');
+      assert.strictEqual(deleteCall.input.Scope, 'REGIONAL');
+      assert.strictEqual(deleteCall.input.Id, TEST_ID);
+      assert.strictEqual(deleteCall.input.LockToken, 'lock-token-456');
     });
 
     it('should handle WAFNonexistentItemException gracefully', async () => {

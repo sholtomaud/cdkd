@@ -1,32 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-s3vectors', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-s3vectors')>();
   return {
     ...actual,
-    S3VectorsClient: vi.fn().mockImplementation(() => ({
+    S3VectorsClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
@@ -37,7 +38,7 @@ import {
   ListIndexesCommand,
   DeleteIndexCommand,
 } from '@aws-sdk/client-s3vectors';
-import { S3VectorsProvider } from '../../../../src/provisioning/providers/s3-vectors-provider.js';
+import { S3VectorsProvider } from '../../../../src/provisioning/providers/s3-vectors-provider.ts';
 
 describe('S3VectorsProvider', () => {
   let provider: S3VectorsProvider;
@@ -62,7 +63,7 @@ describe('S3VectorsProvider', () => {
         VectorBucketName: 'my-vector-bucket',
       });
 
-      expect(result.physicalId).toBe('my-vector-bucket');
+      assert.strictEqual(result.physicalId, 'my-vector-bucket');
       expect(result.attributes).toEqual({
         VectorBucketArn: 'arn:aws:s3vectors:us-east-1:123456789012:vector-bucket/my-vector-bucket',
       });
@@ -70,7 +71,7 @@ describe('S3VectorsProvider', () => {
       const createCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof CreateVectorBucketCommand
       );
-      expect(createCall).toBeDefined();
+      assert.notStrictEqual(createCall, undefined);
       expect(createCall![0].input).toEqual({
         vectorBucketName: 'my-vector-bucket',
         encryptionConfiguration: undefined,
@@ -95,12 +96,12 @@ describe('S3VectorsProvider', () => {
       const listCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof ListIndexesCommand
       );
-      expect(listCall).toBeDefined();
+      assert.notStrictEqual(listCall, undefined);
 
       const deleteCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof DeleteVectorBucketCommand
       );
-      expect(deleteCall).toBeDefined();
+      assert.notStrictEqual(deleteCall, undefined);
       expect(deleteCall![0].input).toEqual({
         vectorBucketName: 'my-vector-bucket',
       });
@@ -109,7 +110,7 @@ describe('S3VectorsProvider', () => {
       const deleteIndexCalls = mockSend.mock.calls.filter(
         (call: unknown[]) => call[0] instanceof DeleteIndexCommand
       );
-      expect(deleteIndexCalls).toHaveLength(0);
+      assert.strictEqual((deleteIndexCalls).length, 0);
     });
 
     it('should delete all indexes before deleting the vector bucket', async () => {
@@ -138,7 +139,7 @@ describe('S3VectorsProvider', () => {
       const listCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof ListIndexesCommand
       );
-      expect(listCall).toBeDefined();
+      assert.notStrictEqual(listCall, undefined);
       expect(listCall![0].input).toEqual({
         vectorBucketName: 'my-vector-bucket',
         nextToken: undefined,
@@ -148,7 +149,7 @@ describe('S3VectorsProvider', () => {
       const deleteIndexCalls = mockSend.mock.calls.filter(
         (call: unknown[]) => call[0] instanceof DeleteIndexCommand
       );
-      expect(deleteIndexCalls).toHaveLength(2);
+      assert.strictEqual((deleteIndexCalls).length, 2);
       expect(deleteIndexCalls[0][0].input).toEqual({
         vectorBucketName: 'my-vector-bucket',
         indexName: 'index-1',
@@ -162,7 +163,7 @@ describe('S3VectorsProvider', () => {
       const deleteBucketCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof DeleteVectorBucketCommand
       );
-      expect(deleteBucketCall).toBeDefined();
+      assert.notStrictEqual(deleteBucketCall, undefined);
     });
 
     it('should treat not-found as success (idempotent)', async () => {
@@ -188,8 +189,8 @@ describe('S3VectorsProvider', () => {
         {}
       );
 
-      expect(result.physicalId).toBe('my-vector-bucket');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'my-vector-bucket');
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).not.toHaveBeenCalled();
     });
   });

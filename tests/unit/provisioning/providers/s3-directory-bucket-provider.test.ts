@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import {
   CreateBucketCommand,
   DeleteBucketCommand,
@@ -7,20 +8,20 @@ import {
 } from '@aws-sdk/client-s3';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
-const mockEc2Send = vi.hoisted(() => vi.fn());
+const mockSend = mock.fn();
+const mockEc2Send = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-ec2', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-ec2')>();
   return {
     ...actual,
-    EC2Client: vi.fn().mockImplementation(() => ({
+    EC2Client: mock.fn().mockImplementation(() => ({
       send: mockEc2Send,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     s3: {
       send: mockSend,
@@ -32,26 +33,26 @@ vi.mock('../../../../src/utils/aws-clients.js', () => ({
   }),
 }));
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { S3DirectoryBucketProvider } from '../../../../src/provisioning/providers/s3-directory-bucket-provider.js';
+import { S3DirectoryBucketProvider } from '../../../../src/provisioning/providers/s3-directory-bucket-provider.ts';
 
 describe('S3DirectoryBucketProvider', () => {
   let provider: S3DirectoryBucketProvider;
@@ -82,7 +83,7 @@ describe('S3DirectoryBucketProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('my-bucket--use1-az4--x-s3');
+      assert.strictEqual(result.physicalId, 'my-bucket--use1-az4--x-s3');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:s3express:us-east-1:123456789012:bucket/my-bucket--use1-az4--x-s3',
       });
@@ -114,7 +115,7 @@ describe('S3DirectoryBucketProvider', () => {
         LocationName: 'us-east-1c--x-s3',
       });
 
-      expect(result.physicalId).toContain('--use1-az4--x-s3');
+      assert.ok((result.physicalId).includes('--use1-az4--x-s3'));
     });
   });
 

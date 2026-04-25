@@ -1,23 +1,24 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock node:fs before importing the module under test
 vi.mock('node:fs', () => ({
-  existsSync: vi.fn(),
-  readFileSync: vi.fn(),
+  existsSync: mock.fn(),
+  readFileSync: mock.fn(),
 }));
 
 // Mock logger to avoid console output in tests
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
@@ -29,7 +30,7 @@ import {
   resolveApp,
   resolveStateBucket,
   getDefaultStateBucketName,
-} from '../../../src/cli/config-loader.js';
+} from '../../../src/cli/config-loader.ts';
 
 describe('config-loader', () => {
   const originalEnv = process.env;
@@ -52,7 +53,7 @@ describe('config-loader', () => {
 
       const result = loadCdkJson('/some/dir');
 
-      expect(result).toBeNull();
+      assert.strictEqual(result, null);
       expect(existsSync).toHaveBeenCalledWith('/some/dir/cdk.json');
     });
 
@@ -81,7 +82,7 @@ describe('config-loader', () => {
 
       const result = loadCdkJson('/project');
 
-      expect(result).toBeNull();
+      assert.strictEqual(result, null);
     });
 
     it('should use process.cwd() when no cwd argument is provided', () => {
@@ -92,7 +93,7 @@ describe('config-loader', () => {
       // Should have been called with a path ending in cdk.json based on cwd
       expect(existsSync).toHaveBeenCalledTimes(1);
       const calledPath = vi.mocked(existsSync).mock.calls[0][0] as string;
-      expect(calledPath).toMatch(/cdk\.json$/);
+      assert.ok((/cdk\.json$/).test(calledPath));
     });
   });
 
@@ -100,7 +101,7 @@ describe('config-loader', () => {
     it('should return CLI value when provided', () => {
       const result = resolveApp('npx ts-node bin/app.ts');
 
-      expect(result).toBe('npx ts-node bin/app.ts');
+      assert.strictEqual(result, 'npx ts-node bin/app.ts');
     });
 
     it('should fall back to CDKD_APP env var when CLI value is not provided', () => {
@@ -108,7 +109,7 @@ describe('config-loader', () => {
 
       const result = resolveApp();
 
-      expect(result).toBe('npx ts-node bin/env-app.ts');
+      assert.strictEqual(result, 'npx ts-node bin/env-app.ts');
     });
 
     it('should fall back to cdk.json app field when CLI and env are not set', () => {
@@ -119,7 +120,7 @@ describe('config-loader', () => {
 
       const result = resolveApp();
 
-      expect(result).toBe('npx ts-node bin/cdk-app.ts');
+      assert.strictEqual(result, 'npx ts-node bin/cdk-app.ts');
     });
 
     it('should return undefined when no source provides a value', () => {
@@ -127,7 +128,7 @@ describe('config-loader', () => {
 
       const result = resolveApp();
 
-      expect(result).toBeUndefined();
+      assert.strictEqual(result, undefined);
     });
 
     it('should prioritize CLI over env var', () => {
@@ -135,7 +136,7 @@ describe('config-loader', () => {
 
       const result = resolveApp('cli-app');
 
-      expect(result).toBe('cli-app');
+      assert.strictEqual(result, 'cli-app');
     });
 
     it('should prioritize env var over cdk.json', () => {
@@ -145,7 +146,7 @@ describe('config-loader', () => {
 
       const result = resolveApp();
 
-      expect(result).toBe('env-app');
+      assert.strictEqual(result, 'env-app');
     });
   });
 
@@ -153,7 +154,7 @@ describe('config-loader', () => {
     it('should return CLI value when provided', () => {
       const result = resolveStateBucket('my-cli-bucket');
 
-      expect(result).toBe('my-cli-bucket');
+      assert.strictEqual(result, 'my-cli-bucket');
     });
 
     it('should fall back to CDKD_STATE_BUCKET env var when CLI value is not provided', () => {
@@ -161,7 +162,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBe('my-env-bucket');
+      assert.strictEqual(result, 'my-env-bucket');
     });
 
     it('should fall back to cdk.json context when CLI and env are not set', () => {
@@ -179,7 +180,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBe('my-cdk-json-bucket');
+      assert.strictEqual(result, 'my-cdk-json-bucket');
     });
 
     it('should return undefined when no source provides a value', () => {
@@ -187,7 +188,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBeUndefined();
+      assert.strictEqual(result, undefined);
     });
 
     it('should prioritize CLI over env var', () => {
@@ -195,7 +196,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket('cli-bucket');
 
-      expect(result).toBe('cli-bucket');
+      assert.strictEqual(result, 'cli-bucket');
     });
 
     it('should prioritize env var over cdk.json', () => {
@@ -209,7 +210,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBe('env-bucket');
+      assert.strictEqual(result, 'env-bucket');
     });
 
     it('should return undefined when cdk.json context.cdkd.stateBucket is not a string', () => {
@@ -222,7 +223,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBeUndefined();
+      assert.strictEqual(result, undefined);
     });
 
     it('should return undefined when cdk.json has no cdkd context', () => {
@@ -236,7 +237,7 @@ describe('config-loader', () => {
 
       const result = resolveStateBucket();
 
-      expect(result).toBeUndefined();
+      assert.strictEqual(result, undefined);
     });
   });
 
@@ -249,9 +250,9 @@ describe('config-loader', () => {
 
       const result = loadUserCdkJson();
 
-      expect(result).toEqual({ context: { 'user-key': 'user-value' } });
+      assert.deepStrictEqual(result, { context: { 'user-key': 'user-value' } });
       const calledPath = vi.mocked(existsSync).mock.calls[0]![0] as string;
-      expect(calledPath).toMatch(/\.cdk\.json$/);
+      assert.ok((/\.cdk\.json$/).test(calledPath));
     });
 
     it('should return null when ~/.cdk.json does not exist', () => {
@@ -259,7 +260,7 @@ describe('config-loader', () => {
 
       const result = loadUserCdkJson();
 
-      expect(result).toBeNull();
+      assert.strictEqual(result, null);
     });
   });
 
@@ -267,13 +268,13 @@ describe('config-loader', () => {
     it('should generate correct format with account ID and region', () => {
       const result = getDefaultStateBucketName('123456789012', 'us-east-1');
 
-      expect(result).toBe('cdkd-state-123456789012-us-east-1');
+      assert.strictEqual(result, 'cdkd-state-123456789012-us-east-1');
     });
 
     it('should handle different regions', () => {
       const result = getDefaultStateBucketName('111122223333', 'ap-northeast-1');
 
-      expect(result).toBe('cdkd-state-111122223333-ap-northeast-1');
+      assert.strictEqual(result, 'cdkd-state-111122223333-ap-northeast-1');
     });
   });
 });

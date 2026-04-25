@@ -1,30 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock node:fs
 vi.mock('node:fs', () => ({
-  readFileSync: vi.fn(),
+  readFileSync: mock.fn(),
 }));
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 import { readFileSync } from 'node:fs';
-import { AssemblyReader } from '../../../src/synthesis/assembly-reader.js';
-import type { AssemblyManifest } from '../../../src/types/assembly.js';
-import { SynthesisError } from '../../../src/utils/error-handler.js';
+import { AssemblyReader } from '../../../src/synthesis/assembly-reader.ts';
+import type { AssemblyManifest } from '../../../src/types/assembly.ts';
+import { SynthesisError } from '../../../src/utils/error-handler.ts';
 
 /** Sample manifest with one stack and one asset manifest */
 function createSampleManifest(): AssemblyManifest {
@@ -117,8 +118,8 @@ describe('AssemblyReader', () => {
       const result = reader.readManifest('/tmp/cdk.out');
 
       expect(readFileSync).toHaveBeenCalledWith('/tmp/cdk.out/manifest.json', 'utf-8');
-      expect(result.version).toBe('38.0.0');
-      expect(result.artifacts).toBeDefined();
+      assert.strictEqual(result.version, '38.0.0');
+      assert.notStrictEqual(result.artifacts, undefined);
     });
 
     it('should throw SynthesisError when manifest.json not found', () => {
@@ -141,10 +142,10 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks).toHaveLength(1);
-      expect(stacks[0].stackName).toBe('MyStack');
-      expect(stacks[0].artifactId).toBe('MyStack');
-      expect(stacks[0].template).toEqual(sampleTemplate);
+      assert.strictEqual((stacks).length, 1);
+      assert.strictEqual(stacks[0].stackName, 'MyStack');
+      assert.strictEqual(stacks[0].artifactId, 'MyStack');
+      assert.deepStrictEqual(stacks[0].template, sampleTemplate);
     });
 
     it('should extract asset manifest paths (type cdk:asset-manifest)', () => {
@@ -153,7 +154,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks[0].assetManifestPath).toBe('/tmp/cdk.out/MyStackAssets.assets.json');
+      assert.strictEqual(stacks[0].assetManifestPath, '/tmp/cdk.out/MyStackAssets.assets.json');
     });
 
     it('should extract stack dependencies', () => {
@@ -166,12 +167,12 @@ describe('AssemblyReader', () => {
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
       const appStack = stacks.find((s) => s.stackName === 'AppStack');
-      expect(appStack).toBeDefined();
-      expect(appStack!.dependencyNames).toContain('SharedStack');
+      assert.notStrictEqual(appStack, undefined);
+      assert.ok((appStack!.dependencyNames).includes('SharedStack'));
 
       const sharedStack = stacks.find((s) => s.stackName === 'SharedStack');
-      expect(sharedStack).toBeDefined();
-      expect(sharedStack!.dependencyNames).toHaveLength(0);
+      assert.notStrictEqual(sharedStack, undefined);
+      assert.strictEqual((sharedStack!.dependencyNames).length, 0);
     });
 
     it('should parse environment string (aws://account/region)', () => {
@@ -180,8 +181,8 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks[0].region).toBe('us-east-1');
-      expect(stacks[0].account).toBe('123456789012');
+      assert.strictEqual(stacks[0].region, 'us-east-1');
+      assert.strictEqual(stacks[0].account, '123456789012');
     });
 
     it('should return empty array when manifest has no artifacts', () => {
@@ -189,7 +190,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks).toHaveLength(0);
+      assert.strictEqual((stacks).length, 0);
     });
 
     it('should handle unknown-account and unknown-region', () => {
@@ -210,8 +211,8 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks[0].region).toBeUndefined();
-      expect(stacks[0].account).toBeUndefined();
+      assert.strictEqual(stacks[0].region, undefined);
+      assert.strictEqual(stacks[0].account, undefined);
     });
 
     it('should traverse nested assemblies (Stages) to find stacks', () => {
@@ -263,8 +264,8 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', topManifest);
 
-      expect(stacks).toHaveLength(1);
-      expect(stacks[0].stackName).toBe('MyStage-CdkSampleStack');
+      assert.strictEqual((stacks).length, 1);
+      assert.strictEqual(stacks[0].stackName, 'MyStage-CdkSampleStack');
       expect(stacks[0].assetManifestPath).toBe(
         '/tmp/cdk.out/assembly-MyStage/MyStageCdkSampleStack.assets.json'
       );
@@ -315,8 +316,8 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', topManifest);
 
-      expect(stacks).toHaveLength(2);
-      expect(stacks.map((s) => s.stackName).sort()).toEqual(['NestedStack', 'TopStack']);
+      assert.strictEqual((stacks).length, 2);
+      assert.deepStrictEqual(stacks.map((s) => s.stackName).sort(), ['NestedStack', 'TopStack']);
     });
 
     it('should handle nested assembly read failure gracefully', () => {
@@ -338,7 +339,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', topManifest);
 
-      expect(stacks).toHaveLength(0);
+      assert.strictEqual((stacks).length, 0);
     });
 
     it('should use artifactId as stackName when stackName property is missing', () => {
@@ -357,7 +358,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(stacks[0].stackName).toBe('MyArtifactId');
+      assert.strictEqual(stacks[0].stackName, 'MyArtifactId');
     });
   });
 
@@ -382,7 +383,7 @@ describe('AssemblyReader', () => {
 
       const stack = reader.getStack('/tmp/cdk.out', manifest, 'MyStack');
 
-      expect(stack.stackName).toBe('MyStack');
+      assert.strictEqual(stack.stackName, 'MyStack');
     });
   });
 
@@ -393,7 +394,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(reader.hasAssets(stacks[0])).toBe(true);
+      assert.strictEqual(reader.hasAssets(stacks[0]), true);
     });
 
     it('should return false for stacks without assets', () => {
@@ -413,7 +414,7 @@ describe('AssemblyReader', () => {
 
       const stacks = reader.getAllStacks('/tmp/cdk.out', manifest);
 
-      expect(reader.hasAssets(stacks[0])).toBe(false);
+      assert.strictEqual(reader.hasAssets(stacks[0]), false);
     });
   });
 });

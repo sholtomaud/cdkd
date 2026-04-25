@@ -1,32 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DeployEngine } from '../../../src/deployment/deploy-engine.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
-import type { ResourceChange, StackState } from '../../../src/types/state.js';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
+import { DeployEngine } from '../../../src/deployment/deploy-engine.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
+import type { ResourceChange, StackState } from '../../../src/types/state.ts';
 
 // Mock logger
-const mockLoggerInfo = vi.fn();
-const mockLoggerWarn = vi.fn();
-vi.mock('../../../src/utils/logger.js', () => ({
+const mockLoggerInfo = mock.fn();
+const mockLoggerWarn = mock.fn();
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
+    debug: mock.fn(),
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
-    error: vi.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
+      debug: mock.fn(),
       info: mockLoggerInfo,
       warn: mockLoggerWarn,
-      error: vi.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 // Mock IntrinsicFunctionResolver - resolve returns properties as-is
-vi.mock('../../../src/deployment/intrinsic-function-resolver.js', () => ({
-  IntrinsicFunctionResolver: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
-    resolveParameters: vi.fn().mockReturnValue({}),
-    evaluateConditions: vi.fn().mockResolvedValue({}),
+vi.mock('../../../src/deployment/intrinsic-function-resolver.ts', () => ({
+  IntrinsicFunctionResolver: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
+    resolveParameters: mock.fn().mockReturnValue({}),
+    evaluateConditions: mock.fn().mockResolvedValue({}),
   })),
 }));
 
@@ -36,7 +37,7 @@ vi.mock('p-limit', () => ({
 }));
 
 // Mock CloudControlProvider.isSupportedResourceType
-vi.mock('../../../src/provisioning/cloud-control-provider.js', () => ({
+vi.mock('../../../src/provisioning/cloud-control-provider.ts', () => ({
   CloudControlProvider: {
     isSupportedResourceType: vi.fn((type: string) => {
       // IAM types are NOT supported by CC API
@@ -98,27 +99,27 @@ describe('DeployEngine - Safety Net (CC API Fallback)', () => {
     vi.clearAllMocks();
 
     mockSdkProvider = {
-      create: vi.fn().mockResolvedValue({
+      create: mock.fn().mockResolvedValue({
         physicalId: 'physical-id-1',
         attributes: { Arn: 'arn:aws:s3:::test' },
       }),
-      update: vi.fn().mockResolvedValue({
+      update: mock.fn().mockResolvedValue({
         physicalId: 'physical-id-1',
         wasReplaced: false,
       }),
-      delete: vi.fn().mockResolvedValue(undefined),
+      delete: mock.fn().mockResolvedValue(undefined),
     };
 
     mockCcApiProvider = {
-      create: vi.fn().mockResolvedValue({
+      create: mock.fn().mockResolvedValue({
         physicalId: 'cc-physical-id-1',
         attributes: { Arn: 'arn:aws:s3:::test-cc' },
       }),
-      update: vi.fn().mockResolvedValue({
+      update: mock.fn().mockResolvedValue({
         physicalId: 'physical-id-1',
         wasReplaced: false,
       }),
-      delete: vi.fn().mockResolvedValue(undefined),
+      delete: mock.fn().mockResolvedValue(undefined),
     };
 
     const currentState: StackState = {
@@ -130,27 +131,27 @@ describe('DeployEngine - Safety Net (CC API Fallback)', () => {
     };
 
     mockStateBackend = {
-      getState: vi.fn().mockResolvedValue({
+      getState: mock.fn().mockResolvedValue({
         state: currentState,
         etag: 'etag-123',
       }),
-      saveState: vi.fn().mockResolvedValue('etag-456'),
+      saveState: mock.fn().mockResolvedValue('etag-456'),
     };
 
     mockLockManager = {
-      acquireLockWithRetry: vi.fn().mockResolvedValue(true),
-      releaseLock: vi.fn().mockResolvedValue(undefined),
+      acquireLockWithRetry: mock.fn().mockResolvedValue(true),
+      releaseLock: mock.fn().mockResolvedValue(undefined),
     };
 
     mockDagBuilder = {
-      buildGraph: vi.fn().mockReturnValue({}),
-      getExecutionLevels: vi.fn().mockReturnValue([['TestResource']]),
+      buildGraph: mock.fn().mockReturnValue({}),
+      getExecutionLevels: mock.fn().mockReturnValue([['TestResource']]),
     };
 
     mockDiffCalculator = {
-      calculateDiff: vi.fn(),
-      hasChanges: vi.fn().mockReturnValue(true),
-      filterByType: vi.fn().mockImplementation(
+      calculateDiff: mock.fn(),
+      hasChanges: mock.fn().mockReturnValue(true),
+      filterByType: mock.fn().mockImplementation(
         (changes: Map<string, ResourceChange>, type: string) => {
           return Array.from(changes.values()).filter((c) => c.changeType === type);
         }
@@ -158,9 +159,9 @@ describe('DeployEngine - Safety Net (CC API Fallback)', () => {
     };
 
     mockProviderRegistry = {
-      getProvider: vi.fn().mockReturnValue(mockSdkProvider),
-      getCloudControlProvider: vi.fn().mockReturnValue(mockCcApiProvider),
-      validateResourceTypes: vi.fn(),
+      getProvider: mock.fn().mockReturnValue(mockSdkProvider),
+      getCloudControlProvider: mock.fn().mockReturnValue(mockCcApiProvider),
+      validateResourceTypes: mock.fn(),
     };
   });
 

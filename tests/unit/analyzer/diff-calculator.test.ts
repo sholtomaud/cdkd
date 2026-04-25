@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { DiffCalculator } from '../../../src/analyzer/diff-calculator.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
-import type { StackState } from '../../../src/types/state.js';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
+import { DiffCalculator } from '../../../src/analyzer/diff-calculator.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
+import type { StackState } from '../../../src/types/state.ts';
 
 const baseState = (): StackState => ({
   version: 1,
@@ -73,8 +74,8 @@ describe('DiffCalculator - intrinsic-aware diff', () => {
     const calc = new DiffCalculator();
     const changes = await calc.calculateDiff(state, template, resolve);
     const paramChange = changes.get('Parameter');
-    expect(paramChange?.changeType).toBe('UPDATE');
-    expect(paramChange?.propertyChanges?.map((p) => p.path)).toContain('Value');
+    assert.strictEqual(paramChange?.changeType, 'UPDATE');
+    assert.ok((paramChange?.propertyChanges?.map((p) => p.path)).includes('Value'));
   });
 
   it('without resolver, intrinsic wraps mask inner literal changes (legacy behavior)', async () => {
@@ -104,7 +105,7 @@ describe('DiffCalculator - intrinsic-aware diff', () => {
     const calc = new DiffCalculator();
     const changes = await calc.calculateDiff(state, template);
     // Without resolver, the existing isIntrinsic short-circuit returns "equal"
-    expect(changes.get('Parameter')?.changeType).toBe('NO_CHANGE');
+    assert.strictEqual(changes.get('Parameter')?.changeType, 'NO_CHANGE');
   });
 
   it('falls back to unresolved value when resolver throws for a property', async () => {
@@ -138,7 +139,7 @@ describe('DiffCalculator - intrinsic-aware diff', () => {
     const calc = new DiffCalculator();
     const changes = await calc.calculateDiff(state, template, resolve);
     // Resolver failure → keep unresolved → intrinsic treated as equal → NO_CHANGE
-    expect(changes.get('Parameter')?.changeType).toBe('NO_CHANGE');
+    assert.strictEqual(changes.get('Parameter')?.changeType, 'NO_CHANGE');
   });
 
   it('still detects plain property changes when resolver is provided', async () => {
@@ -166,6 +167,6 @@ describe('DiffCalculator - intrinsic-aware diff', () => {
 
     const calc = new DiffCalculator();
     const changes = await calc.calculateDiff(state, template, resolve);
-    expect(changes.get('Bucket')?.changeType).toBe('UPDATE');
+    assert.strictEqual(changes.get('Bucket')?.changeType, 'UPDATE');
   });
 });

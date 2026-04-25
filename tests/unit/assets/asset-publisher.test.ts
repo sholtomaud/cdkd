@@ -1,24 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock node:fs
 vi.mock('node:fs', () => ({
-  readFileSync: vi.fn(),
+  readFileSync: mock.fn(),
 }));
 
 // Mock FileAssetPublisher
-const mockFilePublish = vi.fn();
-vi.mock('../../../src/assets/file-asset-publisher.js', () => ({
-  FileAssetPublisher: vi.fn().mockImplementation(() => ({
+const mockFilePublish = mock.fn();
+vi.mock('../../../src/assets/file-asset-publisher.ts', () => ({
+  FileAssetPublisher: mock.fn().mockImplementation(() => ({
     publish: mockFilePublish,
   })),
 }));
 
 // Mock DockerAssetPublisher
-const mockDockerBuild = vi.fn();
-const mockDockerPush = vi.fn();
-const mockDockerPublish = vi.fn();
-vi.mock('../../../src/assets/docker-asset-publisher.js', () => ({
-  DockerAssetPublisher: vi.fn().mockImplementation(() => ({
+const mockDockerBuild = mock.fn();
+const mockDockerPush = mock.fn();
+const mockDockerPublish = mock.fn();
+vi.mock('../../../src/assets/docker-asset-publisher.ts', () => ({
+  DockerAssetPublisher: mock.fn().mockImplementation(() => ({
     publish: mockDockerPublish,
     build: mockDockerBuild,
     push: mockDockerPush,
@@ -26,39 +27,39 @@ vi.mock('../../../src/assets/docker-asset-publisher.js', () => ({
 }));
 
 // Mock @aws-sdk/client-sts
-const mockStsSend = vi.fn();
-const mockStsDestroy = vi.fn();
+const mockStsSend = mock.fn();
+const mockStsDestroy = mock.fn();
 vi.mock('@aws-sdk/client-sts', () => ({
-  STSClient: vi.fn().mockImplementation(() => ({
+  STSClient: mock.fn().mockImplementation(() => ({
     send: mockStsSend,
     destroy: mockStsDestroy,
   })),
-  GetCallerIdentityCommand: vi.fn().mockImplementation((input) => ({
+  GetCallerIdentityCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'GetCallerIdentity',
   })),
 }));
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 import { readFileSync } from 'node:fs';
-import { AssetPublisher } from '../../../src/assets/asset-publisher.js';
-import { AssetError } from '../../../src/utils/error-handler.js';
-import type { AssetManifest } from '../../../src/types/assets.js';
+import { AssetPublisher } from '../../../src/assets/asset-publisher.ts';
+import { AssetError } from '../../../src/utils/error-handler.ts';
+import type { AssetManifest } from '../../../src/types/assets.ts';
 
 describe('AssetPublisher', () => {
   let publisher: AssetPublisher;
@@ -84,11 +85,11 @@ describe('AssetPublisher', () => {
       files: {
         abc123: {
           displayName: 'LambdaCode',
-          source: { path: 'asset.abc123/index.js', packaging: 'file' },
+          source: { path: 'asset.abc123/index.ts', packaging: 'file' },
           destinations: {
             current: {
               bucketName: 'cdk-assets-bucket',
-              objectKey: 'assets/abc123.js',
+              objectKey: 'assets/abc123.ts',
             },
           },
         },
@@ -173,7 +174,7 @@ describe('AssetPublisher', () => {
         },
         'lambda-hash': {
           displayName: 'LambdaCode',
-          source: { path: 'asset.lambda/index.js', packaging: 'zip' },
+          source: { path: 'asset.lambda/index.ts', packaging: 'zip' },
           destinations: {
             current: {
               bucketName: 'cdk-assets-bucket',
@@ -261,7 +262,7 @@ describe('AssetPublisher', () => {
       files: {
         abc123: {
           displayName: 'FailAsset',
-          source: { path: 'asset.abc123/index.js', packaging: 'file' },
+          source: { path: 'asset.abc123/index.ts', packaging: 'file' },
           destinations: {
             current: {
               bucketName: 'bucket',

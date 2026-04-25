@@ -1,54 +1,55 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock all provider constructors to avoid real AWS SDK usage
-vi.mock('../../../../src/synthesis/context-providers/az-provider.js', () => ({
-  AZContextProvider: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
+vi.mock('../../../../src/synthesis/context-providers/az-provider.ts', () => ({
+  AZContextProvider: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn(),
   })),
 }));
 
-vi.mock('../../../../src/synthesis/context-providers/ssm-provider.js', () => ({
-  SSMContextProvider: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
+vi.mock('../../../../src/synthesis/context-providers/ssm-provider.ts', () => ({
+  SSMContextProvider: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn(),
   })),
 }));
 
-vi.mock('../../../../src/synthesis/context-providers/hosted-zone-provider.js', () => ({
-  HostedZoneContextProvider: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
+vi.mock('../../../../src/synthesis/context-providers/hosted-zone-provider.ts', () => ({
+  HostedZoneContextProvider: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn(),
   })),
 }));
 
-vi.mock('../../../../src/synthesis/context-providers/vpc-provider.js', () => ({
-  VpcContextProvider: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
+vi.mock('../../../../src/synthesis/context-providers/vpc-provider.ts', () => ({
+  VpcContextProvider: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn(),
   })),
 }));
 
-vi.mock('../../../../src/synthesis/context-providers/cc-api-provider.js', () => ({
-  CcApiContextProvider: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
+vi.mock('../../../../src/synthesis/context-providers/cc-api-provider.ts', () => ({
+  CcApiContextProvider: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn(),
   })),
 }));
 
 // Mock logger
-vi.mock('../../../../src/utils/logger.js', () => ({
+vi.mock('../../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
-import { ContextProviderRegistry } from '../../../../src/synthesis/context-providers/index.js';
-import type { MissingContext } from '../../../../src/types/assembly.js';
+import { ContextProviderRegistry } from '../../../../src/synthesis/context-providers/index.ts';
+import type { MissingContext } from '../../../../src/types/assembly.ts';
 
 describe('ContextProviderRegistry', () => {
   beforeEach(() => {
@@ -59,7 +60,7 @@ describe('ContextProviderRegistry', () => {
     const registry = new ContextProviderRegistry({ region: 'us-east-1' });
 
     // Register a custom mock provider
-    const mockProvider = { resolve: vi.fn().mockResolvedValue(['us-east-1a', 'us-east-1b']) };
+    const mockProvider = { resolve: mock.fn().mockResolvedValue(['us-east-1a', 'us-east-1b']) };
     registry.register('availability-zones', mockProvider);
 
     const missing: MissingContext[] = [
@@ -115,8 +116,8 @@ describe('ContextProviderRegistry', () => {
     const results = await registry.resolve(missing);
     const errorResult = results['some:key'] as Record<string, unknown>;
 
-    expect(errorResult['$dontSaveContext']).toBe(true);
-    expect(errorResult['$providerError']).toBeDefined();
+    assert.strictEqual(errorResult['$dontSaveContext'], true);
+    assert.notStrictEqual(errorResult['$providerError'], undefined);
   });
 
   it('should handle provider resolution failures gracefully', async () => {
@@ -124,7 +125,7 @@ describe('ContextProviderRegistry', () => {
 
     // Register a provider that throws
     const failingProvider = {
-      resolve: vi.fn().mockRejectedValue(new Error('AWS API call failed')),
+      resolve: mock.fn().mockRejectedValue(new Error('AWS API call failed')),
     };
     registry.register('failing-provider', failingProvider);
 
@@ -147,8 +148,8 @@ describe('ContextProviderRegistry', () => {
   it('should resolve multiple missing context entries', async () => {
     const registry = new ContextProviderRegistry();
 
-    const azProvider = { resolve: vi.fn().mockResolvedValue(['us-east-1a']) };
-    const ssmProvider = { resolve: vi.fn().mockResolvedValue('param-value') };
+    const azProvider = { resolve: mock.fn().mockResolvedValue(['us-east-1a']) };
+    const ssmProvider = { resolve: mock.fn().mockResolvedValue('param-value') };
     registry.register('availability-zones', azProvider);
     registry.register('ssm', ssmProvider);
 
@@ -167,7 +168,7 @@ describe('ContextProviderRegistry', () => {
 
     const results = await registry.resolve(missing);
 
-    expect(results['az:key']).toEqual(['us-east-1a']);
-    expect(results['ssm:key']).toBe('param-value');
+    assert.deepStrictEqual(results['az:key'], ['us-east-1a']);
+    assert.strictEqual(results['ssm:key'], 'param-value');
   });
 });

@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { NotFoundException } from '@aws-sdk/client-api-gateway';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     apiGateway: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { ApiGatewayProvider } from '../../../src/provisioning/providers/apigateway-provider.js';
+import { ApiGatewayProvider } from '../../../src/provisioning/providers/apigateway-provider.ts';
 
 describe('ApiGatewayProvider', () => {
   let provider: ApiGatewayProvider;
@@ -57,11 +58,11 @@ describe('ApiGatewayProvider', () => {
           CloudWatchRoleArn: 'arn:aws:iam::123456789012:role/ApiGwCloudWatchRole',
         });
 
-        expect(result.physicalId).toBe('ApiGatewayAccount');
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('UpdateAccountCommand');
+        assert.strictEqual(command.constructor.name, 'UpdateAccountCommand');
         expect(command.input.patchOperations).toEqual([
           {
             op: 'replace',
@@ -76,11 +77,11 @@ describe('ApiGatewayProvider', () => {
 
         const result = await provider.create('MyAccount', resourceType, {});
 
-        expect(result.physicalId).toBe('ApiGatewayAccount');
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.input.patchOperations).toEqual([]);
+        assert.deepStrictEqual(command.input.patchOperations, []);
       });
 
       it('should retry on IAM propagation error', async () => {
@@ -97,7 +98,7 @@ describe('ApiGatewayProvider', () => {
         await vi.advanceTimersByTimeAsync(10000);
 
         const result = await promise;
-        expect(result.physicalId).toBe('ApiGatewayAccount');
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
         expect(mockSend).toHaveBeenCalledTimes(2);
       });
 
@@ -112,7 +113,7 @@ describe('ApiGatewayProvider', () => {
         await vi.advanceTimersByTimeAsync(10000);
 
         const result = await promise;
-        expect(result.physicalId).toBe('ApiGatewayAccount');
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
         expect(mockSend).toHaveBeenCalledTimes(2);
       });
 
@@ -132,8 +133,8 @@ describe('ApiGatewayProvider', () => {
         await vi.advanceTimersByTimeAsync(20000);
 
         const result = await promise;
-        expect(result).toBeDefined();
-        expect((result as Error).message).toContain('Failed to create API Gateway Account');
+        assert.notStrictEqual(result, undefined);
+        assert.ok(((result as Error).message).includes('Failed to create API Gateway Account'));
         expect(mockSend).toHaveBeenCalledTimes(3);
       });
 
@@ -162,8 +163,8 @@ describe('ApiGatewayProvider', () => {
           { CloudWatchRoleArn: 'arn:aws:iam::123456789012:role/OldRole' }
         );
 
-        expect(result.physicalId).toBe('ApiGatewayAccount');
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
+        assert.strictEqual(result.wasReplaced, false);
         expect(mockSend).toHaveBeenCalledTimes(1);
       });
 
@@ -182,7 +183,7 @@ describe('ApiGatewayProvider', () => {
         await vi.advanceTimersByTimeAsync(10000);
 
         const result = await promise;
-        expect(result.physicalId).toBe('ApiGatewayAccount');
+        assert.strictEqual(result.physicalId, 'ApiGatewayAccount');
         expect(mockSend).toHaveBeenCalledTimes(2);
       });
     });
@@ -196,7 +197,7 @@ describe('ApiGatewayProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('UpdateAccountCommand');
+        assert.strictEqual(command.constructor.name, 'UpdateAccountCommand');
         expect(command.input.patchOperations).toEqual([
           {
             op: 'replace',
@@ -223,7 +224,7 @@ describe('ApiGatewayProvider', () => {
           'SomeAttr'
         );
 
-        expect(result).toBeUndefined();
+        assert.strictEqual(result, undefined);
       });
     });
   });
@@ -243,12 +244,12 @@ describe('ApiGatewayProvider', () => {
           PathPart: 'users',
         });
 
-        expect(result.physicalId).toBe('abc123');
-        expect(result.attributes).toEqual({ ResourceId: 'abc123' });
+        assert.strictEqual(result.physicalId, 'abc123');
+        assert.deepStrictEqual(result.attributes, { ResourceId: 'abc123' });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('CreateResourceCommand');
+        assert.strictEqual(command.constructor.name, 'CreateResourceCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           parentId: 'parent-id',
@@ -287,9 +288,9 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', ParentId: 'parent-id', PathPart: 'users' }
         );
 
-        expect(result.physicalId).toBe('abc123');
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({ ResourceId: 'abc123' });
+        assert.strictEqual(result.physicalId, 'abc123');
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, { ResourceId: 'abc123' });
         expect(mockSend).not.toHaveBeenCalled();
       });
 
@@ -307,9 +308,9 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', ParentId: 'parent-id', PathPart: 'users' }
         );
 
-        expect(result.physicalId).toBe('new-id');
-        expect(result.wasReplaced).toBe(true);
-        expect(result.attributes).toEqual({ ResourceId: 'new-id' });
+        assert.strictEqual(result.physicalId, 'new-id');
+        assert.strictEqual(result.wasReplaced, true);
+        assert.deepStrictEqual(result.attributes, { ResourceId: 'new-id' });
         expect(mockSend).toHaveBeenCalledTimes(2);
       });
 
@@ -327,8 +328,8 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', ParentId: 'parent-id', PathPart: 'users' }
         );
 
-        expect(result.physicalId).toBe('new-id');
-        expect(result.wasReplaced).toBe(true);
+        assert.strictEqual(result.physicalId, 'new-id');
+        assert.strictEqual(result.wasReplaced, true);
       });
     });
 
@@ -343,7 +344,7 @@ describe('ApiGatewayProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('DeleteResourceCommand');
+        assert.strictEqual(command.constructor.name, 'DeleteResourceCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           resourceId: 'abc123',
@@ -393,7 +394,7 @@ describe('ApiGatewayProvider', () => {
           'ResourceId'
         );
 
-        expect(result).toBe('abc123');
+        assert.strictEqual(result, 'abc123');
       });
 
       it('should return undefined for unknown attributes', async () => {
@@ -403,7 +404,7 @@ describe('ApiGatewayProvider', () => {
           'UnknownAttr'
         );
 
-        expect(result).toBeUndefined();
+        assert.strictEqual(result, undefined);
       });
     });
   });
@@ -421,12 +422,12 @@ describe('ApiGatewayProvider', () => {
           RestApiId: 'api-id',
         });
 
-        expect(result.physicalId).toBe('deploy-123');
-        expect(result.attributes).toEqual({ DeploymentId: 'deploy-123' });
+        assert.strictEqual(result.physicalId, 'deploy-123');
+        assert.deepStrictEqual(result.attributes, { DeploymentId: 'deploy-123' });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('CreateDeploymentCommand');
+        assert.strictEqual(command.constructor.name, 'CreateDeploymentCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           description: undefined,
@@ -441,10 +442,10 @@ describe('ApiGatewayProvider', () => {
           Description: 'My deployment',
         });
 
-        expect(result.physicalId).toBe('deploy-456');
+        assert.strictEqual(result.physicalId, 'deploy-456');
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.input.description).toBe('My deployment');
+        assert.strictEqual(command.input.description, 'My deployment');
       });
 
       it('should throw when RestApiId is missing', async () => {
@@ -474,9 +475,9 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id' }
         );
 
-        expect(result.physicalId).toBe('deploy-123');
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({ DeploymentId: 'deploy-123' });
+        assert.strictEqual(result.physicalId, 'deploy-123');
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, { DeploymentId: 'deploy-123' });
         expect(mockSend).not.toHaveBeenCalled();
       });
     });
@@ -492,7 +493,7 @@ describe('ApiGatewayProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('DeleteDeploymentCommand');
+        assert.strictEqual(command.constructor.name, 'DeleteDeploymentCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           deploymentId: 'deploy-123',
@@ -542,7 +543,7 @@ describe('ApiGatewayProvider', () => {
           'DeploymentId'
         );
 
-        expect(result).toBe('deploy-123');
+        assert.strictEqual(result, 'deploy-123');
       });
 
       it('should return undefined for unknown attributes', async () => {
@@ -552,7 +553,7 @@ describe('ApiGatewayProvider', () => {
           'UnknownAttr'
         );
 
-        expect(result).toBeUndefined();
+        assert.strictEqual(result, undefined);
       });
     });
   });
@@ -572,12 +573,12 @@ describe('ApiGatewayProvider', () => {
           DeploymentId: 'deploy-123',
         });
 
-        expect(result.physicalId).toBe('prod');
-        expect(result.attributes).toEqual({ StageName: 'prod' });
+        assert.strictEqual(result.physicalId, 'prod');
+        assert.deepStrictEqual(result.attributes, { StageName: 'prod' });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('CreateStageCommand');
+        assert.strictEqual(command.constructor.name, 'CreateStageCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           stageName: 'prod',
@@ -596,10 +597,10 @@ describe('ApiGatewayProvider', () => {
           Description: 'Production stage',
         });
 
-        expect(result.physicalId).toBe('prod');
+        assert.strictEqual(result.physicalId, 'prod');
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.input.description).toBe('Production stage');
+        assert.strictEqual(command.input.description, 'Production stage');
       });
 
       it('should throw when required properties are missing', async () => {
@@ -645,13 +646,13 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', StageName: 'prod', DeploymentId: 'deploy-123' }
         );
 
-        expect(result.physicalId).toBe('prod');
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({ StageName: 'prod' });
+        assert.strictEqual(result.physicalId, 'prod');
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, { StageName: 'prod' });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('UpdateStageCommand');
+        assert.strictEqual(command.constructor.name, 'UpdateStageCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           stageName: 'prod',
@@ -672,8 +673,8 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', StageName: 'prod', DeploymentId: 'deploy-123', Description: 'Old desc' }
         );
 
-        expect(result.physicalId).toBe('prod');
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.physicalId, 'prod');
+        assert.strictEqual(result.wasReplaced, false);
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
@@ -691,9 +692,9 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', StageName: 'prod', DeploymentId: 'deploy-123' }
         );
 
-        expect(result.physicalId).toBe('prod');
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({ StageName: 'prod' });
+        assert.strictEqual(result.physicalId, 'prod');
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, { StageName: 'prod' });
         expect(mockSend).not.toHaveBeenCalled();
       });
 
@@ -735,7 +736,7 @@ describe('ApiGatewayProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('DeleteStageCommand');
+        assert.strictEqual(command.constructor.name, 'DeleteStageCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           stageName: 'prod',
@@ -785,7 +786,7 @@ describe('ApiGatewayProvider', () => {
           'StageName'
         );
 
-        expect(result).toBe('prod');
+        assert.strictEqual(result, 'prod');
       });
 
       it('should return undefined for unknown attributes', async () => {
@@ -795,7 +796,7 @@ describe('ApiGatewayProvider', () => {
           'UnknownAttr'
         );
 
-        expect(result).toBeUndefined();
+        assert.strictEqual(result, undefined);
       });
     });
   });
@@ -816,12 +817,12 @@ describe('ApiGatewayProvider', () => {
           AuthorizationType: 'NONE',
         });
 
-        expect(result.physicalId).toBe('api-id|resource-id|GET');
-        expect(result.attributes).toEqual({});
+        assert.strictEqual(result.physicalId, 'api-id|resource-id|GET');
+        assert.deepStrictEqual(result.attributes, {});
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('PutMethodCommand');
+        assert.strictEqual(command.constructor.name, 'PutMethodCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           resourceId: 'resource-id',
@@ -839,10 +840,10 @@ describe('ApiGatewayProvider', () => {
           HttpMethod: 'POST',
         });
 
-        expect(result.physicalId).toBe('api-id|resource-id|POST');
+        assert.strictEqual(result.physicalId, 'api-id|resource-id|POST');
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.input.authorizationType).toBe('NONE');
+        assert.strictEqual(command.input.authorizationType, 'NONE');
       });
 
       it('should create method with integration', async () => {
@@ -861,14 +862,14 @@ describe('ApiGatewayProvider', () => {
           },
         });
 
-        expect(result.physicalId).toBe('api-id|resource-id|POST');
+        assert.strictEqual(result.physicalId, 'api-id|resource-id|POST');
         expect(mockSend).toHaveBeenCalledTimes(2);
 
         const putMethodCmd = mockSend.mock.calls[0][0];
-        expect(putMethodCmd.constructor.name).toBe('PutMethodCommand');
+        assert.strictEqual(putMethodCmd.constructor.name, 'PutMethodCommand');
 
         const putIntegrationCmd = mockSend.mock.calls[1][0];
-        expect(putIntegrationCmd.constructor.name).toBe('PutIntegrationCommand');
+        assert.strictEqual(putIntegrationCmd.constructor.name, 'PutIntegrationCommand');
         expect(putIntegrationCmd.input).toEqual({
           restApiId: 'api-id',
           resourceId: 'resource-id',
@@ -930,9 +931,9 @@ describe('ApiGatewayProvider', () => {
           { RestApiId: 'api-id', ResourceId: 'resource-id', HttpMethod: 'GET' }
         );
 
-        expect(result.physicalId).toBe('api-id|resource-id|GET');
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({});
+        assert.strictEqual(result.physicalId, 'api-id|resource-id|GET');
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, {});
         expect(mockSend).not.toHaveBeenCalled();
       });
     });
@@ -946,7 +947,7 @@ describe('ApiGatewayProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const command = mockSend.mock.calls[0][0];
-        expect(command.constructor.name).toBe('DeleteMethodCommand');
+        assert.strictEqual(command.constructor.name, 'DeleteMethodCommand');
         expect(command.input).toEqual({
           restApiId: 'api-id',
           resourceId: 'resource-id',
@@ -987,7 +988,7 @@ describe('ApiGatewayProvider', () => {
           'RestApiId'
         );
 
-        expect(result).toBe('api-id');
+        assert.strictEqual(result, 'api-id');
       });
 
       it('should return ResourceId from physicalId', async () => {
@@ -997,7 +998,7 @@ describe('ApiGatewayProvider', () => {
           'ResourceId'
         );
 
-        expect(result).toBe('resource-id');
+        assert.strictEqual(result, 'resource-id');
       });
 
       it('should return HttpMethod from physicalId', async () => {
@@ -1007,7 +1008,7 @@ describe('ApiGatewayProvider', () => {
           'HttpMethod'
         );
 
-        expect(result).toBe('GET');
+        assert.strictEqual(result, 'GET');
       });
 
       it('should return undefined for unknown attributes', async () => {
@@ -1017,7 +1018,7 @@ describe('ApiGatewayProvider', () => {
           'UnknownAttr'
         );
 
-        expect(result).toBeUndefined();
+        assert.strictEqual(result, undefined);
       });
     });
   });
@@ -1045,7 +1046,7 @@ describe('ApiGatewayProvider', () => {
 
     it('should return undefined for getAttribute on unsupported type', async () => {
       const result = await provider.getAttribute('id', 'AWS::ApiGateway::Unknown', 'Attr');
-      expect(result).toBeUndefined();
+      assert.strictEqual(result, undefined);
     });
   });
 });

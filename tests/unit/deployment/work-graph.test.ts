@@ -1,22 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
-import { WorkGraph, type WorkNode } from '../../../src/deployment/work-graph.js';
+import { WorkGraph, type WorkNode } from '../../../src/deployment/work-graph.ts';
 
 function makeNode(
   id: string,
@@ -42,7 +43,7 @@ describe('WorkGraph', () => {
       executed.push(node.id);
     });
 
-    expect(executed).toEqual(['stack:A']);
+    assert.deepStrictEqual(executed, ['stack:A']);
   });
 
   it('should execute nodes in dependency order', async () => {
@@ -55,7 +56,7 @@ describe('WorkGraph', () => {
       executed.push(node.id);
     });
 
-    expect(executed).toEqual(['asset:A', 'stack:A']);
+    assert.deepStrictEqual(executed, ['asset:A', 'stack:A']);
   });
 
   it('should run independent nodes in parallel', async () => {
@@ -74,7 +75,7 @@ describe('WorkGraph', () => {
     // Both assets should start before either finishes
     const firstEnd = callOrder.findIndex((e) => e.startsWith('end:'));
     const startsBeforeFirstEnd = callOrder.slice(0, firstEnd).filter((e) => e.startsWith('start:'));
-    expect(startsBeforeFirstEnd.length).toBe(2);
+    assert.strictEqual(startsBeforeFirstEnd.length, 2);
 
     // Stack should execute after both assets
     expect(callOrder.indexOf('start:stack:A')).toBeGreaterThan(callOrder.indexOf('end:asset:A'));
@@ -121,7 +122,7 @@ describe('WorkGraph', () => {
       })
     ).rejects.toThrow(/1 node\(s\) failed.*1 skipped/);
 
-    expect(executed).toEqual(['asset:A']);
+    assert.deepStrictEqual(executed, ['asset:A']);
   });
 
   it('should handle inter-stack dependencies', async () => {
@@ -134,7 +135,7 @@ describe('WorkGraph', () => {
       executed.push(node.id);
     });
 
-    expect(executed).toEqual(['stack:A', 'stack:B']);
+    assert.deepStrictEqual(executed, ['stack:A', 'stack:B']);
   });
 
   it('should deploy independent stacks in parallel', async () => {
@@ -152,7 +153,7 @@ describe('WorkGraph', () => {
     // Both stacks should start before either finishes
     const firstEnd = callOrder.findIndex((e) => e.startsWith('end:'));
     const startsBeforeFirstEnd = callOrder.slice(0, firstEnd).filter((e) => e.startsWith('start:'));
-    expect(startsBeforeFirstEnd.length).toBe(2);
+    assert.strictEqual(startsBeforeFirstEnd.length, 2);
   });
 
   it('should pipeline asset publish and stack deploy across stacks', async () => {
@@ -189,7 +190,7 @@ describe('WorkGraph', () => {
     graph.addNode(makeNode('asset:B', 'asset-publish'));
     graph.addNode(makeNode('stack:A', 'stack'));
 
-    expect(graph.summary()).toEqual({ 'asset-build': 0, 'asset-publish': 2, stack: 1 });
+    assert.deepStrictEqual(graph.summary(), { 'asset-build': 0, 'asset-publish': 2, stack: 1 });
   });
 
   it('should handle empty graph', async () => {
@@ -198,6 +199,6 @@ describe('WorkGraph', () => {
     await graph.execute({ 'asset-build': 4, 'asset-publish': 8, stack: 4 }, async (node) => {
       executed.push(node.id);
     });
-    expect(executed).toEqual([]);
+    assert.deepStrictEqual(executed, []);
   });
 });

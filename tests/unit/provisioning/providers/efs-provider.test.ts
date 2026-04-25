@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import {
   CreateFileSystemCommand,
   DeleteFileSystemCommand,
@@ -12,38 +13,38 @@ import {
   AccessPointNotFound,
 } from '@aws-sdk/client-efs';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-efs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-efs')>();
   return {
     ...actual,
-    EFSClient: vi.fn().mockImplementation(() => ({
+    EFSClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { EFSProvider } from '../../../../src/provisioning/providers/efs-provider.js';
+import { EFSProvider } from '../../../../src/provisioning/providers/efs-provider.ts';
 
 describe('EFSProvider', () => {
   let provider: EFSProvider;
@@ -69,7 +70,7 @@ describe('EFSProvider', () => {
 
         const result = await provider.create('MyFileSystem', 'AWS::EFS::FileSystem', {});
 
-        expect(result.physicalId).toBe('fs-12345678');
+        assert.strictEqual(result.physicalId, 'fs-12345678');
         expect(result.attributes).toEqual({
           Arn: 'arn:aws:elasticfilesystem:us-east-1:123456789012:file-system/fs-12345678',
           FileSystemId: 'fs-12345678',
@@ -78,7 +79,7 @@ describe('EFSProvider', () => {
 
         const cmd = mockSend.mock.calls[0][0];
         expect(cmd).toBeInstanceOf(CreateFileSystemCommand);
-        expect(cmd.input.CreationToken).toBe('cdkd-MyFileSystem');
+        assert.strictEqual(cmd.input.CreationToken, 'cdkd-MyFileSystem');
       });
 
       it('should create file system with tags and encryption', async () => {
@@ -102,15 +103,15 @@ describe('EFSProvider', () => {
           ],
         });
 
-        expect(result.physicalId).toBe('fs-encrypted');
+        assert.strictEqual(result.physicalId, 'fs-encrypted');
         expect(mockSend).toHaveBeenCalledTimes(2);
 
         const cmd = mockSend.mock.calls[0][0];
         expect(cmd).toBeInstanceOf(CreateFileSystemCommand);
-        expect(cmd.input.Encrypted).toBe(true);
-        expect(cmd.input.KmsKeyId).toBe('arn:aws:kms:us-east-1:123456789012:key/my-key');
-        expect(cmd.input.PerformanceMode).toBe('generalPurpose');
-        expect(cmd.input.ThroughputMode).toBe('bursting');
+        assert.strictEqual(cmd.input.Encrypted, true);
+        assert.strictEqual(cmd.input.KmsKeyId, 'arn:aws:kms:us-east-1:123456789012:key/my-key');
+        assert.strictEqual(cmd.input.PerformanceMode, 'generalPurpose');
+        assert.strictEqual(cmd.input.ThroughputMode, 'bursting');
         expect(cmd.input.Tags).toEqual([
           { Key: 'Name', Value: 'my-fs' },
           { Key: 'Env', Value: 'test' },
@@ -127,7 +128,7 @@ describe('EFSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
         const cmd = mockSend.mock.calls[0][0];
         expect(cmd).toBeInstanceOf(DeleteFileSystemCommand);
-        expect(cmd.input.FileSystemId).toBe('fs-12345678');
+        assert.strictEqual(cmd.input.FileSystemId, 'fs-12345678');
       });
 
       it('should not throw when file system not found', async () => {
@@ -165,14 +166,14 @@ describe('EFSProvider', () => {
           SecurityGroups: ['sg-123'],
         });
 
-        expect(result.physicalId).toBe('fsmt-123');
-        expect(result.attributes).toEqual({});
+        assert.strictEqual(result.physicalId, 'fsmt-123');
+        assert.deepStrictEqual(result.attributes, {});
 
         const createCmd = mockSend.mock.calls[0][0];
         expect(createCmd).toBeInstanceOf(CreateMountTargetCommand);
-        expect(createCmd.input.FileSystemId).toBe('fs-12345678');
-        expect(createCmd.input.SubnetId).toBe('subnet-abc');
-        expect(createCmd.input.SecurityGroups).toEqual(['sg-123']);
+        assert.strictEqual(createCmd.input.FileSystemId, 'fs-12345678');
+        assert.strictEqual(createCmd.input.SubnetId, 'subnet-abc');
+        assert.deepStrictEqual(createCmd.input.SecurityGroups, ['sg-123']);
       });
     });
 
@@ -194,7 +195,7 @@ describe('EFSProvider', () => {
 
         const deleteCmd = mockSend.mock.calls[0][0];
         expect(deleteCmd).toBeInstanceOf(DeleteMountTargetCommand);
-        expect(deleteCmd.input.MountTargetId).toBe('fsmt-123');
+        assert.strictEqual(deleteCmd.input.MountTargetId, 'fsmt-123');
       });
 
       it('should not throw when mount target not found', async () => {
@@ -232,7 +233,7 @@ describe('EFSProvider', () => {
           },
         });
 
-        expect(result.physicalId).toBe('fsap-abc123');
+        assert.strictEqual(result.physicalId, 'fsap-abc123');
         expect(result.attributes).toEqual({
           Arn: 'arn:aws:elasticfilesystem:us-east-1:123456789012:access-point/fsap-abc123',
           AccessPointId: 'fsap-abc123',
@@ -240,8 +241,8 @@ describe('EFSProvider', () => {
 
         const cmd = mockSend.mock.calls[0][0];
         expect(cmd).toBeInstanceOf(CreateAccessPointCommand);
-        expect(cmd.input.FileSystemId).toBe('fs-12345678');
-        expect(cmd.input.PosixUser).toEqual({ Uid: 1000, Gid: 1000 });
+        assert.strictEqual(cmd.input.FileSystemId, 'fs-12345678');
+        assert.deepStrictEqual(cmd.input.PosixUser, { Uid: 1000, Gid: 1000 });
         expect(cmd.input.RootDirectory).toEqual({
           Path: '/export/data',
           CreationInfo: {
@@ -262,7 +263,7 @@ describe('EFSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
         const cmd = mockSend.mock.calls[0][0];
         expect(cmd).toBeInstanceOf(DeleteAccessPointCommand);
-        expect(cmd.input.AccessPointId).toBe('fsap-abc123');
+        assert.strictEqual(cmd.input.AccessPointId, 'fsap-abc123');
       });
 
       it('should not throw when access point not found', async () => {
@@ -284,7 +285,7 @@ describe('EFSProvider', () => {
       const result = await provider.update(
         'MyFS', 'fs-123', 'AWS::EFS::FileSystem', {}, {}
       );
-      expect(result).toEqual({ physicalId: 'fs-123', wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId: 'fs-123', wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -292,7 +293,7 @@ describe('EFSProvider', () => {
       const result = await provider.update(
         'MyMT', 'fsmt-123', 'AWS::EFS::MountTarget', {}, {}
       );
-      expect(result).toEqual({ physicalId: 'fsmt-123', wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId: 'fsmt-123', wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -300,7 +301,7 @@ describe('EFSProvider', () => {
       const result = await provider.update(
         'MyAP', 'fsap-123', 'AWS::EFS::AccessPoint', {}, {}
       );
-      expect(result).toEqual({ physicalId: 'fsap-123', wasReplaced: false });
+      assert.deepStrictEqual(result, { physicalId: 'fsap-123', wasReplaced: false });
       expect(mockSend).not.toHaveBeenCalled();
     });
   });

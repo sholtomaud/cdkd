@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 vi.mock('@aws-sdk/client-rds', async () => {
   const actual = await vi.importActual('@aws-sdk/client-rds');
   return {
     ...actual,
-    RDSClient: vi.fn().mockImplementation(() => ({ send: mockSend })),
+    RDSClient: mock.fn().mockImplementation(() => ({ send: mockSend })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { RDSProvider } from '../../../src/provisioning/providers/rds-provider.js';
+import { RDSProvider } from '../../../src/provisioning/providers/rds-provider.ts';
 
 describe('RDSProvider', () => {
   let provider: RDSProvider;
@@ -52,16 +53,16 @@ describe('RDSProvider', () => {
           SubnetIds: ['subnet-aaa', 'subnet-bbb'],
         });
 
-        expect(result.physicalId).toBe('my-subnet-group');
+        assert.strictEqual(result.physicalId, 'my-subnet-group');
         expect(result.attributes).toEqual({
           DBSubnetGroupName: 'my-subnet-group',
         });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateDBSubnetGroupCommand');
-        expect(createCall.input.DBSubnetGroupName).toBe('my-subnet-group');
-        expect(createCall.input.SubnetIds).toEqual(['subnet-aaa', 'subnet-bbb']);
+        assert.strictEqual(createCall.constructor.name, 'CreateDBSubnetGroupCommand');
+        assert.strictEqual(createCall.input.DBSubnetGroupName, 'my-subnet-group');
+        assert.deepStrictEqual(createCall.input.SubnetIds, ['subnet-aaa', 'subnet-bbb']);
       });
 
       it('should use logicalId as name when DBSubnetGroupName is not provided', async () => {
@@ -72,10 +73,10 @@ describe('RDSProvider', () => {
           SubnetIds: ['subnet-aaa'],
         });
 
-        expect(result.physicalId).toBe('mysubnetgroup');
+        assert.strictEqual(result.physicalId, 'mysubnetgroup');
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.input.DBSubnetGroupName).toBe('mysubnetgroup');
+        assert.strictEqual(createCall.input.DBSubnetGroupName, 'mysubnetgroup');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -98,8 +99,8 @@ describe('RDSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const deleteCall = mockSend.mock.calls[0][0];
-        expect(deleteCall.constructor.name).toBe('DeleteDBSubnetGroupCommand');
-        expect(deleteCall.input.DBSubnetGroupName).toBe('my-subnet-group');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteDBSubnetGroupCommand');
+        assert.strictEqual(deleteCall.input.DBSubnetGroupName, 'my-subnet-group');
       });
 
       it('should handle DBSubnetGroupNotFoundFault gracefully', async () => {
@@ -170,7 +171,7 @@ describe('RDSProvider', () => {
           MasterUserPassword: 'secret123',
         });
 
-        expect(result.physicalId).toBe('my-cluster');
+        assert.strictEqual(result.physicalId, 'my-cluster');
         expect(result.attributes).toEqual({
           'Endpoint.Address': 'my-cluster.cluster-xxx.us-east-1.rds.amazonaws.com',
           'Endpoint.Port': '5432',
@@ -180,8 +181,8 @@ describe('RDSProvider', () => {
         });
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateDBClusterCommand');
-        expect(createCall.input.Engine).toBe('aurora-postgresql');
+        assert.strictEqual(createCall.constructor.name, 'CreateDBClusterCommand');
+        assert.strictEqual(createCall.input.Engine, 'aurora-postgresql');
       });
 
       it('should use lowercased logicalId when DBClusterIdentifier is not provided', async () => {
@@ -201,10 +202,10 @@ describe('RDSProvider', () => {
           Engine: 'aurora-postgresql',
         });
 
-        expect(result.physicalId).toBe('mycluster');
+        assert.strictEqual(result.physicalId, 'mycluster');
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.input.DBClusterIdentifier).toBe('mycluster');
+        assert.strictEqual(createCall.input.DBClusterIdentifier, 'mycluster');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -234,13 +235,13 @@ describe('RDSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(3);
 
         const modifyCall = mockSend.mock.calls[0][0];
-        expect(modifyCall.constructor.name).toBe('ModifyDBClusterCommand');
-        expect(modifyCall.input.DeletionProtection).toBe(false);
+        assert.strictEqual(modifyCall.constructor.name, 'ModifyDBClusterCommand');
+        assert.strictEqual(modifyCall.input.DeletionProtection, false);
 
         const deleteCall = mockSend.mock.calls[1][0];
-        expect(deleteCall.constructor.name).toBe('DeleteDBClusterCommand');
-        expect(deleteCall.input.DBClusterIdentifier).toBe('my-cluster');
-        expect(deleteCall.input.SkipFinalSnapshot).toBe(true);
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteDBClusterCommand');
+        assert.strictEqual(deleteCall.input.DBClusterIdentifier, 'my-cluster');
+        assert.strictEqual(deleteCall.input.SkipFinalSnapshot, true);
       });
 
       it('should handle DBClusterNotFoundFault gracefully', async () => {
@@ -320,7 +321,7 @@ describe('RDSProvider', () => {
           DBClusterIdentifier: 'my-cluster',
         });
 
-        expect(result.physicalId).toBe('my-instance');
+        assert.strictEqual(result.physicalId, 'my-instance');
         expect(result.attributes).toEqual({
           'Endpoint.Address': 'my-instance.xxx.us-east-1.rds.amazonaws.com',
           'Endpoint.Port': '5432',
@@ -328,10 +329,10 @@ describe('RDSProvider', () => {
         });
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateDBInstanceCommand');
-        expect(createCall.input.DBInstanceClass).toBe('db.serverless');
-        expect(createCall.input.Engine).toBe('aurora-postgresql');
-        expect(createCall.input.DBClusterIdentifier).toBe('my-cluster');
+        assert.strictEqual(createCall.constructor.name, 'CreateDBInstanceCommand');
+        assert.strictEqual(createCall.input.DBInstanceClass, 'db.serverless');
+        assert.strictEqual(createCall.input.Engine, 'aurora-postgresql');
+        assert.strictEqual(createCall.input.DBClusterIdentifier, 'my-cluster');
       });
 
       it('should use lowercased logicalId when DBInstanceIdentifier is not provided', async () => {
@@ -352,10 +353,10 @@ describe('RDSProvider', () => {
           Engine: 'aurora-postgresql',
         });
 
-        expect(result.physicalId).toBe('myinstance');
+        assert.strictEqual(result.physicalId, 'myinstance');
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.input.DBInstanceIdentifier).toBe('myinstance');
+        assert.strictEqual(createCall.input.DBInstanceIdentifier, 'myinstance');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -386,14 +387,14 @@ describe('RDSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(3);
 
         const modifyCall = mockSend.mock.calls[0][0];
-        expect(modifyCall.constructor.name).toBe('ModifyDBInstanceCommand');
-        expect(modifyCall.input.DeletionProtection).toBe(false);
-        expect(modifyCall.input.ApplyImmediately).toBe(true);
+        assert.strictEqual(modifyCall.constructor.name, 'ModifyDBInstanceCommand');
+        assert.strictEqual(modifyCall.input.DeletionProtection, false);
+        assert.strictEqual(modifyCall.input.ApplyImmediately, true);
 
         const deleteCall = mockSend.mock.calls[1][0];
-        expect(deleteCall.constructor.name).toBe('DeleteDBInstanceCommand');
-        expect(deleteCall.input.DBInstanceIdentifier).toBe('my-instance');
-        expect(deleteCall.input.SkipFinalSnapshot).toBe(true);
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteDBInstanceCommand');
+        assert.strictEqual(deleteCall.input.DBInstanceIdentifier, 'my-instance');
+        assert.strictEqual(deleteCall.input.SkipFinalSnapshot, true);
       });
 
       it('should handle DBInstanceNotFoundFault gracefully', async () => {

@@ -1,25 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 import { EventEmitter } from 'node:events';
 
 const { mockEcrSend, mockEcrDestroy, mockExecFile, mockSpawn } = vi.hoisted(() => ({
-  mockEcrSend: vi.fn(),
-  mockEcrDestroy: vi.fn(),
-  mockExecFile: vi.fn(),
-  mockSpawn: vi.fn(),
+  mockEcrSend: mock.fn(),
+  mockEcrDestroy: mock.fn(),
+  mockExecFile: mock.fn(),
+  mockSpawn: mock.fn(),
 }));
 
 // Mock @aws-sdk/client-ecr
 vi.mock('@aws-sdk/client-ecr', () => ({
-  ECRClient: vi.fn().mockImplementation(() => ({
+  ECRClient: mock.fn().mockImplementation(() => ({
     send: mockEcrSend,
     destroy: mockEcrDestroy,
   })),
-  GetAuthorizationTokenCommand: vi.fn().mockImplementation((input) => ({
+  GetAuthorizationTokenCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'GetAuthorizationToken',
   })),
-  DescribeImagesCommand: vi.fn().mockImplementation((input) => ({
+  DescribeImagesCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'DescribeImages',
   })),
@@ -37,25 +38,25 @@ vi.mock('node:util', () => ({
 }));
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 import { DescribeImagesCommand } from '@aws-sdk/client-ecr';
-import { DockerAssetPublisher } from '../../../src/assets/docker-asset-publisher.js';
-import { AssetError } from '../../../src/utils/error-handler.js';
-import type { DockerImageAsset } from '../../../src/types/assets.js';
+import { DockerAssetPublisher } from '../../../src/assets/docker-asset-publisher.ts';
+import { AssetError } from '../../../src/utils/error-handler.ts';
+import type { DockerImageAsset } from '../../../src/types/assets.ts';
 
 describe('DockerAssetPublisher', () => {
   let publisher: DockerAssetPublisher;
@@ -84,7 +85,7 @@ describe('DockerAssetPublisher', () => {
     // Default: spawn (for docker login) succeeds
     mockSpawn.mockImplementation(() => {
       const proc = new EventEmitter();
-      (proc as unknown as Record<string, unknown>).stdin = { write: vi.fn(), end: vi.fn() };
+      (proc as unknown as Record<string, unknown>).stdin = { write: mock.fn(), end: mock.fn() };
       (proc as unknown as Record<string, unknown>).stderr = new EventEmitter();
       process.nextTick(() => proc.emit('close', 0));
       return proc;
@@ -252,7 +253,7 @@ describe('DockerAssetPublisher', () => {
     mockSpawn.mockImplementation(() => {
       callOrder.push('login');
       const proc = new EventEmitter();
-      (proc as unknown as Record<string, unknown>).stdin = { write: vi.fn(), end: vi.fn() };
+      (proc as unknown as Record<string, unknown>).stdin = { write: mock.fn(), end: mock.fn() };
       (proc as unknown as Record<string, unknown>).stderr = new EventEmitter();
       process.nextTick(() => proc.emit('close', 0));
       return proc;
@@ -267,7 +268,7 @@ describe('DockerAssetPublisher', () => {
     );
 
     // Build first, then auth, then login (spawn), then tag+push
-    expect(callOrder).toEqual(['build', 'getAuthToken', 'login', 'tag', 'push']);
+    assert.deepStrictEqual(callOrder, ['build', 'getAuthToken', 'login', 'tag', 'push']);
   });
 
   it('should resolve placeholders in repository name and tag', async () => {

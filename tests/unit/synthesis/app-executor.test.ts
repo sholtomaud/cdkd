@@ -1,41 +1,42 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import type { ChildProcess } from 'node:child_process';
 
 // Mock node:child_process
 vi.mock('node:child_process', () => ({
-  spawn: vi.fn(),
+  spawn: mock.fn(),
 }));
 
 // Mock node:fs
 vi.mock('node:fs', () => ({
-  writeFileSync: vi.fn(),
-  mkdtempSync: vi.fn(),
-  rmSync: vi.fn(),
+  writeFileSync: mock.fn(),
+  mkdtempSync: mock.fn(),
+  rmSync: mock.fn(),
 }));
 
 // Note: node:os is NOT mocked - tmpdir() uses real OS temp directory
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { AppExecutor } from '../../../src/synthesis/app-executor.js';
-import { SynthesisError } from '../../../src/utils/error-handler.js';
+import { AppExecutor } from '../../../src/synthesis/app-executor.ts';
+import { SynthesisError } from '../../../src/utils/error-handler.ts';
 
 /**
  * Helper to create a mock ChildProcess that emits events
@@ -106,11 +107,11 @@ describe('AppExecutor', () => {
       const callEnv = vi.mocked(spawn).mock.calls[0][1] as { env: Record<string, string> };
       const env = callEnv.env;
 
-      expect(env['CDK_OUTDIR']).toBe('/tmp/cdk.out');
-      expect(env['CDK_DEFAULT_REGION']).toBe('us-east-1');
-      expect(env['CDK_DEFAULT_ACCOUNT']).toBe('123456789012');
-      expect(env['CDK_CLI_ASM_VERSION']).toBe('38.0.0');
-      expect(env['CDK_CONTEXT_JSON']).toBe(JSON.stringify({ key: 'value' }));
+      assert.strictEqual(env['CDK_OUTDIR'], '/tmp/cdk.out');
+      assert.strictEqual(env['CDK_DEFAULT_REGION'], 'us-east-1');
+      assert.strictEqual(env['CDK_DEFAULT_ACCOUNT'], '123456789012');
+      assert.strictEqual(env['CDK_CLI_ASM_VERSION'], '38.0.0');
+      assert.strictEqual(env['CDK_CONTEXT_JSON'], JSON.stringify({ key: 'value' }));
     });
 
     it('should handle large context by writing to temp file', async () => {
@@ -145,8 +146,8 @@ describe('AppExecutor', () => {
       // Should set CONTEXT_OVERFLOW_LOCATION_ENV instead of CDK_CONTEXT_JSON
       const callEnv = vi.mocked(spawn).mock.calls[0][1] as { env: Record<string, string> };
       const env = callEnv.env;
-      expect(env['CONTEXT_OVERFLOW_LOCATION_ENV']).toBe(`${fakeTempDir}/context.json`);
-      expect(env['CDK_CONTEXT_JSON']).toBeUndefined();
+      assert.strictEqual(env['CONTEXT_OVERFLOW_LOCATION_ENV'], `${fakeTempDir}/context.json`);
+      assert.strictEqual(env['CDK_CONTEXT_JSON'], undefined);
 
       // Should clean up temp dir
       expect(rmSync).toHaveBeenCalledWith(fakeTempDir, {
@@ -160,7 +161,7 @@ describe('AppExecutor', () => {
       vi.mocked(spawn).mockReturnValue(mockProc);
 
       const promise = executor.execute({
-        app: 'bin/app.js',
+        app: 'bin/app.ts',
         outputDir: '/tmp/cdk.out',
         context: {},
       });
@@ -169,8 +170,8 @@ describe('AppExecutor', () => {
       await promise;
 
       const commandLine = vi.mocked(spawn).mock.calls[0][0] as string;
-      expect(commandLine).toContain(process.execPath);
-      expect(commandLine).toContain('bin/app.js');
+      assert.ok((commandLine).includes(process.execPath));
+      assert.ok((commandLine).includes('bin/app.ts'));
     });
 
     it('should throw SynthesisError on non-zero exit code', async () => {
@@ -185,8 +186,8 @@ describe('AppExecutor', () => {
 
       mockProc.emit('close', 1);
 
-      await expect(promise).rejects.toThrow(SynthesisError);
-      await expect(promise).rejects.toThrow(/exited with code 1/);
+      await assert.rejects(async () => { await promise; }, SynthesisError);
+      await assert.rejects(async () => { await promise; }, /exited with code 1/);
     });
 
     it('should include stderr in error message on failure', async () => {
@@ -203,7 +204,7 @@ describe('AppExecutor', () => {
       mockProc._stderr.emit('data', Buffer.from('Error: something went wrong'));
       mockProc.emit('close', 1);
 
-      await expect(promise).rejects.toThrow(/something went wrong/);
+      await assert.rejects(async () => { await promise; }, /something went wrong/);
     });
 
     it('should throw SynthesisError on spawn error', async () => {
@@ -218,8 +219,8 @@ describe('AppExecutor', () => {
 
       mockProc.emit('error', new Error('spawn ENOENT'));
 
-      await expect(promise).rejects.toThrow(SynthesisError);
-      await expect(promise).rejects.toThrow(/Failed to execute CDK app/);
+      await assert.rejects(async () => { await promise; }, SynthesisError);
+      await assert.rejects(async () => { await promise; }, /Failed to execute CDK app/);
     });
 
     it('should not set CDK_DEFAULT_REGION when region is not provided', async () => {
@@ -237,8 +238,8 @@ describe('AppExecutor', () => {
 
       const callEnv = vi.mocked(spawn).mock.calls[0][1] as { env: Record<string, string> };
       const env = callEnv.env;
-      expect(env['CDK_DEFAULT_REGION']).toBeUndefined();
-      expect(env['CDK_DEFAULT_ACCOUNT']).toBeUndefined();
+      assert.strictEqual(env['CDK_DEFAULT_REGION'], undefined);
+      assert.strictEqual(env['CDK_DEFAULT_ACCOUNT'], undefined);
     });
   });
 });

@@ -1,40 +1,41 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS SDK
-const mockSend = vi.fn();
-const mockDestroy = vi.fn();
+const mockSend = mock.fn();
+const mockDestroy = mock.fn();
 vi.mock('@aws-sdk/client-cloudcontrol', () => ({
-  CloudControlClient: vi.fn().mockImplementation(() => ({
+  CloudControlClient: mock.fn().mockImplementation(() => ({
     send: mockSend,
     destroy: mockDestroy,
   })),
-  GetResourceCommand: vi.fn().mockImplementation((input) => ({
+  GetResourceCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'GetResourceCommand',
   })),
-  ListResourcesCommand: vi.fn().mockImplementation((input) => ({
+  ListResourcesCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'ListResourcesCommand',
   })),
 }));
 
 // Mock logger
-vi.mock('../../../../src/utils/logger.js', () => ({
+vi.mock('../../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
-import { CcApiContextProvider } from '../../../../src/synthesis/context-providers/cc-api-provider.js';
+import { CcApiContextProvider } from '../../../../src/synthesis/context-providers/cc-api-provider.ts';
 
 describe('CcApiContextProvider', () => {
   beforeEach(() => {
@@ -144,7 +145,7 @@ describe('CcApiContextProvider', () => {
         expectedMatchCount: 'exactly-one',
       });
 
-      expect(result).toEqual({ Name: 'resource-1' });
+      assert.deepStrictEqual(result, { Name: 'resource-1' });
     });
 
     it('should throw for exactly-one when multiple resources found', async () => {
@@ -181,7 +182,7 @@ describe('CcApiContextProvider', () => {
         expectedMatchCount: 'at-least-one',
       });
 
-      expect(result).toEqual([{ Name: 'r1' }, { Name: 'r2' }]);
+      assert.deepStrictEqual(result, [{ Name: 'r1' }, { Name: 'r2' }]);
     });
 
     it('should throw for at-least-one when no resources found', async () => {
@@ -233,7 +234,7 @@ describe('CcApiContextProvider', () => {
         dummyValue: { fallback: true },
       });
 
-      expect(result).toEqual({ fallback: true });
+      assert.deepStrictEqual(result, { fallback: true });
     });
   });
 
@@ -251,7 +252,7 @@ describe('CcApiContextProvider', () => {
       dummyValue: 'dummy-result',
     });
 
-    expect(result).toBe('dummy-result');
+    assert.strictEqual(result, 'dummy-result');
   });
 
   it('should throw when no resources found and ignoreErrorOnMissingContext is false', async () => {
@@ -317,7 +318,7 @@ describe('CcApiContextProvider', () => {
       expectedMatchCount: 'at-least-one',
     });
 
-    expect(result).toEqual([{ Name: 'r1' }, { Name: 'r2' }]);
+    assert.deepStrictEqual(result, [{ Name: 'r1' }, { Name: 'r2' }]);
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
 
@@ -347,6 +348,6 @@ describe('CcApiContextProvider', () => {
       expectedMatchCount: 'exactly-one',
     });
 
-    expect(result).toEqual({ Name: 'r1', Config: { Env: 'prod' } });
+    assert.deepStrictEqual(result, { Name: 'r1', Config: { Env: 'prod' } });
   });
 });

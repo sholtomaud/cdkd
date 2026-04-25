@@ -1,29 +1,30 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import {
   IntrinsicFunctionResolver,
   type ResolverContext,
   resetAccountInfoCache,
-} from '../../../src/deployment/intrinsic-function-resolver.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
+} from '../../../src/deployment/intrinsic-function-resolver.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 // Mock EC2 DescribeAvailabilityZones response
-const mockEc2Send = vi.fn().mockResolvedValue({
+const mockEc2Send = mock.fn().mockResolvedValue({
   AvailabilityZones: [
     { ZoneName: 'us-east-1a', State: 'available' },
     { ZoneName: 'us-east-1b', State: 'available' },
@@ -32,10 +33,10 @@ const mockEc2Send = vi.fn().mockResolvedValue({
 });
 
 // Mock AWS clients (for STS in pseudo parameter resolution and EC2 for GetAZs)
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     sts: {
-      send: vi.fn().mockResolvedValue({
+      send: mock.fn().mockResolvedValue({
         Account: '123456789012',
       }),
     },
@@ -80,7 +81,7 @@ describe('IntrinsicFunctionResolver - Fn::FindInMap', () => {
       context
     );
 
-    expect(result).toBe('ami-12345678');
+    assert.strictEqual(result, 'ami-12345678');
   });
 
   it('should throw error when mapping name is not found', async () => {
@@ -194,7 +195,7 @@ describe('IntrinsicFunctionResolver - Fn::FindInMap', () => {
       context
     );
 
-    expect(result).toBe('ami-12345678');
+    assert.strictEqual(result, 'ami-12345678');
   });
 
   it('should resolve Fn::FindInMap returning non-string values', async () => {
@@ -220,7 +221,7 @@ describe('IntrinsicFunctionResolver - Fn::FindInMap', () => {
       context
     );
 
-    expect(result).toBe(3);
+    assert.strictEqual(result, 3);
   });
 });
 
@@ -244,7 +245,7 @@ describe('IntrinsicFunctionResolver - Fn::Base64', () => {
 
     const result = await resolver.resolve({ 'Fn::Base64': 'Hello, World!' }, context);
 
-    expect(result).toBe(Buffer.from('Hello, World!').toString('base64'));
+    assert.strictEqual(result, Buffer.from('Hello, World!').toString('base64'));
   });
 
   it('should resolve Fn::Base64 with nested intrinsic function', async () => {
@@ -266,7 +267,7 @@ describe('IntrinsicFunctionResolver - Fn::Base64', () => {
       context
     );
 
-    expect(result).toBe(Buffer.from('hello-world').toString('base64'));
+    assert.strictEqual(result, Buffer.from('hello-world').toString('base64'));
   });
 
   it('should resolve Fn::Base64 with Ref', async () => {
@@ -287,7 +288,7 @@ describe('IntrinsicFunctionResolver - Fn::Base64', () => {
       context
     );
 
-    expect(result).toBe(Buffer.from('#!/bin/bash\necho hello').toString('base64'));
+    assert.strictEqual(result, Buffer.from('#!/bin/bash\necho hello').toString('base64'));
   });
 
   it('should resolve Fn::Base64 with Fn::Sub', async () => {
@@ -312,7 +313,7 @@ describe('IntrinsicFunctionResolver - Fn::Base64', () => {
       context
     );
 
-    expect(result).toBe(Buffer.from('#!/bin/bash\necho myapp').toString('base64'));
+    assert.strictEqual(result, Buffer.from('#!/bin/bash\necho myapp').toString('base64'));
   });
 
   it('should throw error when value does not resolve to a string', async () => {
@@ -359,7 +360,7 @@ describe('IntrinsicFunctionResolver - Fn::GetAZs', () => {
 
     const result = await resolver.resolve({ 'Fn::GetAZs': '' }, context);
 
-    expect(result).toEqual(['us-east-1a', 'us-east-1b', 'us-east-1c']);
+    assert.deepStrictEqual(result, ['us-east-1a', 'us-east-1b', 'us-east-1c']);
     expect(mockEc2Send).toHaveBeenCalledTimes(1);
   });
 
@@ -382,7 +383,7 @@ describe('IntrinsicFunctionResolver - Fn::GetAZs', () => {
 
     const result = await resolver.resolve({ 'Fn::GetAZs': 'eu-west-1' }, context);
 
-    expect(result).toEqual(['eu-west-1a', 'eu-west-1b']);
+    assert.deepStrictEqual(result, ['eu-west-1a', 'eu-west-1b']);
     expect(mockEc2Send).toHaveBeenCalledTimes(1);
   });
 
@@ -401,7 +402,7 @@ describe('IntrinsicFunctionResolver - Fn::GetAZs', () => {
       context
     );
 
-    expect(result).toEqual(['us-east-1a', 'us-east-1b', 'us-east-1c']);
+    assert.deepStrictEqual(result, ['us-east-1a', 'us-east-1b', 'us-east-1c']);
     expect(mockEc2Send).toHaveBeenCalledTimes(1);
   });
 
@@ -443,7 +444,7 @@ describe('IntrinsicFunctionResolver - Fn::GetAZs', () => {
 
     const result = await resolver.resolve({ 'Fn::GetAZs': '' }, context);
 
-    expect(result).toEqual(['us-east-1a', 'us-east-1b', 'us-east-1c']);
+    assert.deepStrictEqual(result, ['us-east-1a', 'us-east-1b', 'us-east-1c']);
   });
 
   it('should throw error when EC2 API call fails', async () => {

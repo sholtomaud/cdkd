@@ -1,37 +1,38 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-codebuild', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-codebuild')>();
   return {
     ...actual,
-    CodeBuildClient: vi.fn().mockImplementation(() => ({
+    CodeBuildClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { CodeBuildProvider } from '../../../../src/provisioning/providers/codebuild-provider.js';
+import { CodeBuildProvider } from '../../../../src/provisioning/providers/codebuild-provider.ts';
 import {
   CreateProjectCommand,
   DeleteProjectCommand,
@@ -66,14 +67,14 @@ describe('CodeBuildProvider', () => {
         Artifacts: { Type: 'NO_ARTIFACTS' },
       });
 
-      expect(result.physicalId).toBe('my-project');
+      assert.strictEqual(result.physicalId, 'my-project');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:codebuild:us-east-1:123456789012:project/my-project',
       });
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
       expect(command).toBeInstanceOf(CreateProjectCommand);
-      expect(command.input.name).toBe('my-project');
+      assert.strictEqual(command.input.name, 'my-project');
       expect(command.input.source).toEqual({
         type: 'NO_SOURCE',
         buildspec: 'version: 0.2\nphases:\n  build:\n    commands:\n      - echo hello',
@@ -85,8 +86,8 @@ describe('CodeBuildProvider', () => {
         image: 'aws/codebuild/standard:7.0',
         environmentVariables: undefined,
       });
-      expect(command.input.serviceRole).toBe('arn:aws:iam::123456789012:role/codebuild-role');
-      expect(command.input.artifacts).toEqual({ type: 'NO_ARTIFACTS' });
+      assert.strictEqual(command.input.serviceRole, 'arn:aws:iam::123456789012:role/codebuild-role');
+      assert.deepStrictEqual(command.input.artifacts, { type: 'NO_ARTIFACTS' });
     });
 
     it('should JSON.stringify buildspec when it is an object', async () => {
@@ -113,7 +114,7 @@ describe('CodeBuildProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
       expect(command).toBeInstanceOf(CreateProjectCommand);
-      expect(command.input.source.buildspec).toBe(JSON.stringify(buildspecObj));
+      assert.strictEqual(command.input.source.buildspec, JSON.stringify(buildspecObj));
     });
   });
 
@@ -148,14 +149,14 @@ describe('CodeBuildProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('my-project');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'my-project');
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
       expect(command).toBeInstanceOf(UpdateProjectCommand);
-      expect(command.input.name).toBe('my-project');
-      expect(command.input.source.type).toBe('CODECOMMIT');
-      expect(command.input.environment.computeType).toBe('BUILD_GENERAL1_MEDIUM');
+      assert.strictEqual(command.input.name, 'my-project');
+      assert.strictEqual(command.input.source.type, 'CODECOMMIT');
+      assert.strictEqual(command.input.environment.computeType, 'BUILD_GENERAL1_MEDIUM');
     });
   });
 
@@ -170,7 +171,7 @@ describe('CodeBuildProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
       expect(command).toBeInstanceOf(DeleteProjectCommand);
-      expect(command.input).toEqual({ name: 'my-project' });
+      assert.deepStrictEqual(command.input, { name: 'my-project' });
     });
 
     it('should not throw when project is not found', async () => {

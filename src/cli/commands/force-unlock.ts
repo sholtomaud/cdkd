@@ -1,87 +1,39 @@
-import { Command } from 'commander';
 import { commonOptions, stateOptions, stackOptions } from '../options.js';
 import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { LockManager } from '../../state/lock-manager.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import { resolveStateBucketWithDefault } from '../config-loader.js';
+import { CliCommand } from '../cli-parser.js';
 
-/**
- * Force-unlock command implementation
- *
- * Removes a stale lock from a stack. Use when a previous deploy was
- * interrupted and left a lock behind.
- */
 async function forceUnlockCommand(
   stackArgs: string[],
-  options: {
-    stateBucket?: string;
-    statePrefix: string;
-    stack?: string;
-    region?: string;
-    profile?: string;
-    verbose: boolean;
-  }
+  options: any
 ): Promise<void> {
   const logger = getLogger();
-
-  if (options.verbose) {
-    logger.setLevel('debug');
-  }
-
-  // Resolve stack name
+  if (options.verbose) logger.setLevel('debug');
   const stackPatterns = stackArgs.length > 0 ? stackArgs : options.stack ? [options.stack] : [];
-  if (stackPatterns.length === 0) {
-    throw new Error('Stack name is required. Usage: cdkd force-unlock <stack-name>');
-  }
-
-  // Initialize AWS clients
-  const awsClients = new AwsClients({
-    ...(options.region && { region: options.region }),
-    ...(options.profile && { profile: options.profile }),
-  });
-  setAwsClients(awsClients);
-
+  if (stackPatterns.length === 0) throw new Error('Stack name is required.');
   const region = options.region || process.env['AWS_REGION'] || 'us-east-1';
-  const stateBucket = await resolveStateBucketWithDefault(options.stateBucket, region);
-
+  const stateBucket = await resolveStateBucketWithDefault(options['state-bucket'], region);
+  const awsClients = new AwsClients({ ...(options.region && { region }), ...(options.profile && { profile: options.profile }) });
+  setAwsClients(awsClients);
   try {
-    const stateConfig = {
-      bucket: stateBucket,
-      prefix: options.statePrefix,
-    };
-    const lockManager = new LockManager(awsClients.s3, stateConfig);
-
+    const lockManager = new LockManager(awsClients.s3, { bucket: stateBucket, prefix: options['state-prefix'] });
     for (const stackName of stackPatterns) {
       logger.info(`Force-unlocking stack: ${stackName}`);
-
-      try {
-        await lockManager.forceReleaseLock(stackName);
-        logger.info(`✓ Lock released for stack: ${stackName}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.includes('No lock found') || message.includes('NoSuchKey')) {
-          logger.info(`No lock found for stack: ${stackName}`);
-        } else {
-          logger.error(`Failed to unlock stack ${stackName}: ${message}`);
-        }
-      }
+      await lockManager.forceReleaseLock(stackName);
     }
   } finally {
     awsClients.destroy();
   }
 }
 
-/**
- * Create force-unlock command
- */
-export function createForceUnlockCommand(): Command {
-  const cmd = new Command('force-unlock')
-    .description('Force-release a stale lock on a stack')
-    .argument('[stacks...]', 'Stack name(s) to unlock')
-    .action(withErrorHandling(forceUnlockCommand));
-
-  [...commonOptions, ...stateOptions, ...stackOptions].forEach((opt) => cmd.addOption(opt));
-
-  return cmd;
+export function createForceUnlockCommand(): CliCommand {
+  return {
+    name: 'force-unlock',
+    description: 'Force-release lock',
+    options: [...commonOptions, ...stateOptions, ...stackOptions],
+    action: withErrorHandling(forceUnlockCommand),
+  };
 }

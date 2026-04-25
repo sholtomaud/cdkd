@@ -18,10 +18,13 @@ import { StateError } from '../utils/error-handler.js';
 export class S3StateBackend {
   private logger = getLogger().child('S3StateBackend');
 
-  constructor(
-    private s3Client: S3Client,
-    private config: StateBackendConfig
-  ) {}
+    private s3Client: S3Client;
+  private config: StateBackendConfig;
+
+  constructor(s3Client: S3Client, config: StateBackendConfig) {
+    this.s3Client = s3Client;
+    this.config = config;
+  }
 
   /**
    * Get the S3 key for a stack's state file

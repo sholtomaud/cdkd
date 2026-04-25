@@ -1,157 +1,90 @@
 import { getLogger } from './logger.js';
 
-/**
- * Base error class for cdkd
- */
 export class CdkdError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string,
-    public readonly cause?: Error
-  ) {
+  public readonly code: string;
+  public readonly cause?: Error;
+
+  constructor(message: string, code: string, cause?: Error) {
     super(message);
-    this.name = 'CdkdError';
-    Object.setPrototypeOf(this, CdkdError.prototype);
+    this.code = code;
+    this.cause = cause;
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 
-/**
- * State management errors
- */
-export class StateError extends CdkdError {
-  constructor(message: string, cause?: Error) {
-    super(message, 'STATE_ERROR', cause);
-    this.name = 'StateError';
-    Object.setPrototypeOf(this, StateError.prototype);
-  }
-}
-
-/**
- * Lock acquisition errors
- */
-export class LockError extends CdkdError {
-  constructor(message: string, cause?: Error) {
-    super(message, 'LOCK_ERROR', cause);
-    this.name = 'LockError';
-    Object.setPrototypeOf(this, LockError.prototype);
-  }
-}
-
-/**
- * Synthesis errors
- */
-export class SynthesisError extends CdkdError {
-  constructor(message: string, cause?: Error) {
-    super(message, 'SYNTHESIS_ERROR', cause);
-    this.name = 'SynthesisError';
-    Object.setPrototypeOf(this, SynthesisError.prototype);
-  }
-}
-
-/**
- * Asset errors
- */
-export class AssetError extends CdkdError {
-  constructor(message: string, cause?: Error) {
-    super(message, 'ASSET_ERROR', cause);
-    this.name = 'AssetError';
-    Object.setPrototypeOf(this, AssetError.prototype);
-  }
-}
-
-/**
- * Resource provisioning errors
- */
 export class ProvisioningError extends CdkdError {
+  public readonly resourceType: string;
+  public readonly logicalId: string;
+  public readonly physicalId?: string;
+
   constructor(
     message: string,
-    public readonly resourceType: string,
-    public readonly logicalId: string,
-    public readonly physicalId?: string,
+    resourceType: string,
+    logicalId: string,
+    physicalId?: string,
     cause?: Error
   ) {
     super(message, 'PROVISIONING_ERROR', cause);
-    this.name = 'ProvisioningError';
-    Object.setPrototypeOf(this, ProvisioningError.prototype);
+    this.resourceType = resourceType;
+    this.logicalId = logicalId;
+    this.physicalId = physicalId;
   }
 }
 
-/**
- * Dependency resolution errors
- */
 export class DependencyError extends CdkdError {
   constructor(message: string, cause?: Error) {
     super(message, 'DEPENDENCY_ERROR', cause);
-    this.name = 'DependencyError';
-    Object.setPrototypeOf(this, DependencyError.prototype);
   }
 }
 
-/**
- * Configuration errors
- */
-export class ConfigError extends CdkdError {
+export class SynthesisError extends CdkdError {
   constructor(message: string, cause?: Error) {
-    super(message, 'CONFIG_ERROR', cause);
-    this.name = 'ConfigError';
-    Object.setPrototypeOf(this, ConfigError.prototype);
+    super(message, 'SYNTHESIS_ERROR', cause);
   }
 }
 
-/**
- * Check if error is a cdkd error
- */
-export function isCdkdError(error: unknown): error is CdkdError {
-  return error instanceof CdkdError;
+export class AssetError extends CdkdError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'ASSET_ERROR', cause);
+  }
 }
 
-/**
- * Format error for display
- */
-export function formatError(error: unknown): string {
-  if (isCdkdError(error)) {
-    let message = `${error.name}: ${error.message}`;
-    if (error.cause) {
-      message += `\nCaused by: ${error.cause.message}`;
-    }
-    return message;
+export class StateError extends CdkdError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'STATE_ERROR', cause);
   }
-
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`;
-  }
-
-  return String(error);
 }
 
-/**
- * Global error handler
- */
-export function handleError(error: unknown): never {
-  const logger = getLogger();
-  logger.error(formatError(error));
-
-  if (error instanceof Error && error.stack) {
-    logger.debug('Stack trace:', error.stack);
+export class LockError extends CdkdError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'LOCK_ERROR', cause);
   }
-
-  process.exit(1);
 }
 
-/**
- * Wrap async function with error handling
- *
- * Note: Uses `any[]` for args to support Commander.js action handlers
- * which can have various parameter types
- */
-export function withErrorHandling<Args extends unknown[], Return extends Promise<void> | void>(
-  fn: (...args: Args) => Return
-): (...args: Args) => Promise<void> {
-  return async (...args: Args): Promise<void> => {
+export function withErrorHandling<T extends any[], R>(
+  fn: (...args: T) => Promise<R>
+): (...args: T) => Promise<R> {
+  return async (...args: T): Promise<R> => {
     try {
-      await fn(...args);
+      return await fn(...args);
     } catch (error) {
-      handleError(error);
+      const logger = getLogger();
+      if (error instanceof CdkdError) {
+        logger.error(`${error.message}`);
+        if (error.cause) {
+          logger.debug(`Cause: ${error.cause.message}`);
+          if (error.cause.stack) {
+            logger.debug(error.cause.stack);
+          }
+        }
+      } else if (error instanceof Error) {
+        logger.error(`Unexpected error: ${error.message}`);
+        logger.debug(error.stack || 'No stack trace available');
+      } else {
+        logger.error(`Unexpected error: ${String(error)}`);
+      }
+      process.exit(1);
     }
   };
 }

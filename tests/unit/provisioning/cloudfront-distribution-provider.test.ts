@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { NoSuchDistribution } from '@aws-sdk/client-cloudfront';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     cloudFront: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { CloudFrontDistributionProvider } from '../../../src/provisioning/providers/cloudfront-distribution-provider.js';
+import { CloudFrontDistributionProvider } from '../../../src/provisioning/providers/cloudfront-distribution-provider.ts';
 
 describe('CloudFrontDistributionProvider', () => {
   let provider: CloudFrontDistributionProvider;
@@ -67,7 +68,7 @@ describe('CloudFrontDistributionProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('EDFDVBD6EXAMPLE');
+      assert.strictEqual(result.physicalId, 'EDFDVBD6EXAMPLE');
       expect(result.attributes).toEqual({
         Id: 'EDFDVBD6EXAMPLE',
         DistributionId: 'EDFDVBD6EXAMPLE',
@@ -76,9 +77,9 @@ describe('CloudFrontDistributionProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateDistributionCommand');
-      expect(createCall.input.DistributionConfig.CallerReference).toBeDefined();
-      expect(createCall.input.DistributionConfig.Enabled).toBe(true);
+      assert.strictEqual(createCall.constructor.name, 'CreateDistributionCommand');
+      assert.notStrictEqual(createCall.input.DistributionConfig.CallerReference, undefined);
+      assert.strictEqual(createCall.input.DistributionConfig.Enabled, true);
     });
 
     it('should convert DistributionConfig with Origins Items to SDK Quantity format', async () => {
@@ -184,8 +185,8 @@ describe('CloudFrontDistributionProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('EDFDVBD6EXAMPLE');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'EDFDVBD6EXAMPLE');
+      assert.strictEqual(result.wasReplaced, false);
       expect(result.attributes).toEqual({
         Id: 'EDFDVBD6EXAMPLE',
         DistributionId: 'EDFDVBD6EXAMPLE',
@@ -195,16 +196,16 @@ describe('CloudFrontDistributionProvider', () => {
 
       // Verify GetDistributionConfigCommand
       const getConfigCall = mockSend.mock.calls[0][0];
-      expect(getConfigCall.constructor.name).toBe('GetDistributionConfigCommand');
-      expect(getConfigCall.input.Id).toBe('EDFDVBD6EXAMPLE');
+      assert.strictEqual(getConfigCall.constructor.name, 'GetDistributionConfigCommand');
+      assert.strictEqual(getConfigCall.input.Id, 'EDFDVBD6EXAMPLE');
 
       // Verify UpdateDistributionCommand with IfMatch
       const updateCall = mockSend.mock.calls[1][0];
-      expect(updateCall.constructor.name).toBe('UpdateDistributionCommand');
-      expect(updateCall.input.Id).toBe('EDFDVBD6EXAMPLE');
-      expect(updateCall.input.IfMatch).toBe('E2QWRUHAPOMQZL');
+      assert.strictEqual(updateCall.constructor.name, 'UpdateDistributionCommand');
+      assert.strictEqual(updateCall.input.Id, 'EDFDVBD6EXAMPLE');
+      assert.strictEqual(updateCall.input.IfMatch, 'E2QWRUHAPOMQZL');
       // CallerReference should be preserved from the current config
-      expect(updateCall.input.DistributionConfig.CallerReference).toBe('original-caller-ref');
+      assert.strictEqual(updateCall.input.DistributionConfig.CallerReference, 'original-caller-ref');
     });
   });
 
@@ -250,21 +251,21 @@ describe('CloudFrontDistributionProvider', () => {
 
       // Verify initial GetDistributionConfigCommand
       const getConfigCall = mockSend.mock.calls[0][0];
-      expect(getConfigCall.constructor.name).toBe('GetDistributionConfigCommand');
-      expect(getConfigCall.input.Id).toBe('EDFDVBD6EXAMPLE');
+      assert.strictEqual(getConfigCall.constructor.name, 'GetDistributionConfigCommand');
+      assert.strictEqual(getConfigCall.input.Id, 'EDFDVBD6EXAMPLE');
 
       // Verify UpdateDistributionCommand (disable)
       const updateCall = mockSend.mock.calls[1][0];
-      expect(updateCall.constructor.name).toBe('UpdateDistributionCommand');
-      expect(updateCall.input.Id).toBe('EDFDVBD6EXAMPLE');
-      expect(updateCall.input.IfMatch).toBe('E2QWRUHAPOMQZL');
-      expect(updateCall.input.DistributionConfig.Enabled).toBe(false);
+      assert.strictEqual(updateCall.constructor.name, 'UpdateDistributionCommand');
+      assert.strictEqual(updateCall.input.Id, 'EDFDVBD6EXAMPLE');
+      assert.strictEqual(updateCall.input.IfMatch, 'E2QWRUHAPOMQZL');
+      assert.strictEqual(updateCall.input.DistributionConfig.Enabled, false);
 
       // Verify DeleteDistributionCommand with final ETag
       const deleteCall = mockSend.mock.calls[4][0];
-      expect(deleteCall.constructor.name).toBe('DeleteDistributionCommand');
-      expect(deleteCall.input.Id).toBe('EDFDVBD6EXAMPLE');
-      expect(deleteCall.input.IfMatch).toBe('E4FINALETAG');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteDistributionCommand');
+      assert.strictEqual(deleteCall.input.Id, 'EDFDVBD6EXAMPLE');
+      assert.strictEqual(deleteCall.input.IfMatch, 'E4FINALETAG');
     });
 
     it('should handle NoSuchDistribution gracefully', async () => {

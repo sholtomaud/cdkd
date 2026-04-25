@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS clients before importing the provider
-const mockLambdaSend = vi.fn();
-const mockSnsSend = vi.fn();
-const mockS3Send = vi.fn();
+const mockLambdaSend = mock.fn();
+const mockSnsSend = mock.fn();
+const mockS3Send = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     lambda: { send: mockLambdaSend },
     sns: { send: mockSnsSend },
@@ -13,30 +14,30 @@ vi.mock('../../../src/utils/aws-clients.js', () => ({
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: vi.fn().mockResolvedValue('https://s3.example.com/presigned-url'),
+  getSignedUrl: mock.fn().mockResolvedValue('https://s3.example.com/presigned-url'),
 }));
 
-import { CustomResourceProvider } from '../../../src/provisioning/providers/custom-resource-provider.js';
+import { CustomResourceProvider } from '../../../src/provisioning/providers/custom-resource-provider.ts';
 
 describe('CustomResourceProvider', () => {
   let provider: CustomResourceProvider;
@@ -70,7 +71,7 @@ describe('CustomResourceProvider', () => {
     });
 
     it('should return false for Lambda function names', () => {
-      expect(provider.isSnsServiceToken('my-function-name')).toBe(false);
+      assert.strictEqual(provider.isSnsServiceToken('my-function-name'), false);
     });
 
     it('should return false for partial Lambda ARNs', () => {
@@ -102,8 +103,8 @@ describe('CustomResourceProvider', () => {
         ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:my-handler',
       });
 
-      expect(result.physicalId).toBe('custom-phys-id-123');
-      expect(result.attributes).toEqual({ Attr1: 'value1' });
+      assert.strictEqual(result.physicalId, 'custom-phys-id-123');
+      assert.deepStrictEqual(result.attributes, { Attr1: 'value1' });
       expect(mockLambdaSend).toHaveBeenCalledTimes(1);
       expect(mockSnsSend).not.toHaveBeenCalled();
     });
@@ -140,8 +141,8 @@ describe('CustomResourceProvider', () => {
         ServiceToken: snsTopicArn,
       });
 
-      expect(result.physicalId).toBe('sns-custom-id-456');
-      expect(result.attributes).toEqual({ Output1: 'result' });
+      assert.strictEqual(result.physicalId, 'sns-custom-id-456');
+      assert.deepStrictEqual(result.attributes, { Output1: 'result' });
       expect(mockSnsSend).toHaveBeenCalledTimes(1);
       expect(mockLambdaSend).not.toHaveBeenCalled();
     });
@@ -249,9 +250,9 @@ describe('CustomResourceProvider', () => {
         { ServiceToken: snsTopicArn, Prop1: 'old' }
       );
 
-      expect(result.physicalId).toBe('sns-custom-id-456');
-      expect(result.wasReplaced).toBe(false);
-      expect(result.attributes).toEqual({ UpdatedAttr: 'new-value' });
+      assert.strictEqual(result.physicalId, 'sns-custom-id-456');
+      assert.strictEqual(result.wasReplaced, false);
+      assert.deepStrictEqual(result.attributes, { UpdatedAttr: 'new-value' });
       expect(mockSnsSend).toHaveBeenCalledTimes(1);
       expect(mockLambdaSend).not.toHaveBeenCalled();
     });
@@ -301,8 +302,8 @@ describe('CustomResourceProvider', () => {
         ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:provider-framework-onEvent',
       });
 
-      expect(result.physicalId).toBe('async-resource-123');
-      expect(result.attributes).toEqual({ AsyncResult: 'completed' });
+      assert.strictEqual(result.physicalId, 'async-resource-123');
+      assert.deepStrictEqual(result.attributes, { AsyncResult: 'completed' });
       expect(mockLambdaSend).toHaveBeenCalledTimes(1);
     });
 
@@ -341,8 +342,8 @@ describe('CustomResourceProvider', () => {
         ServiceToken: 'arn:aws:lambda:us-east-1:123456789012:function:provider-framework-onEvent',
       });
 
-      expect(result.physicalId).toBe('async-resource-456');
-      expect(result.attributes).toEqual({ Output: 'done' });
+      assert.strictEqual(result.physicalId, 'async-resource-456');
+      assert.deepStrictEqual(result.attributes, { Output: 'done' });
     });
 
     it('should handle async FAILED response from Step Functions', async () => {
@@ -464,9 +465,9 @@ describe('CustomResourceProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('async-resource-123');
-      expect(result.wasReplaced).toBe(false);
-      expect(result.attributes).toEqual({ UpdatedOutput: 'new-value' });
+      assert.strictEqual(result.physicalId, 'async-resource-123');
+      assert.strictEqual(result.wasReplaced, false);
+      assert.deepStrictEqual(result.attributes, { UpdatedOutput: 'new-value' });
     });
   });
 });
