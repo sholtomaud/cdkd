@@ -14,12 +14,9 @@ import { DiffCalculator } from '../../analyzer/diff-calculator.js';
 import { IntrinsicFunctionResolver } from '../../deployment/intrinsic-function-resolver.js';
 import { setAwsClients, AwsClients } from '../../utils/aws-clients.js';
 import { resolveApp, resolveStateBucketWithDefault } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
-async function diffCommand(
-  _stacks: string[],
-  options: any
-): Promise<void> {
+async function diffCommand(_stacks: string[], options: any): Promise<void> {
   const logger = getLogger();
   if (options.verbose) logger.setLevel('debug');
   const app = resolveApp(options.app);
@@ -51,8 +48,18 @@ async function diffCommand(
       logger.info(`Calculating diff for ${stackInfo.stackName}...`);
       const stateResult = await stateBackend.getState(stackInfo.stackName);
       const currentState = stateResult?.state || { resources: {} };
-      const diffResolveFn = (value: any) => intrinsicResolver.resolve(value, { template: stackInfo.template, resources: (currentState as any).resources, stateBackend, stackName: stackInfo.stackName });
-      const changes = await diffCalculator.calculateDiff(currentState as any, stackInfo.template, diffResolveFn);
+      const diffResolveFn = (value: any) =>
+        intrinsicResolver.resolve(value, {
+          template: stackInfo.template,
+          resources: (currentState as any).resources,
+          stateBackend,
+          stackName: stackInfo.stackName,
+        });
+      const changes = await diffCalculator.calculateDiff(
+        currentState as any,
+        stackInfo.template,
+        diffResolveFn
+      );
       if (changes.size === 0) logger.info('No changes.');
       else logger.info(`Found ${changes.size} changes.`);
     }

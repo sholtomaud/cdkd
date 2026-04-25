@@ -1,14 +1,9 @@
-import {
-  appOptions,
-  commonOptions,
-  contextOptions,
-  parseContextOptions,
-} from '../options.js';
+import { appOptions, commonOptions, contextOptions, parseContextOptions } from '../options.js';
 import { getLogger } from '../../utils/logger.js';
 import { withErrorHandling } from '../../utils/error-handler.js';
 import { Synthesizer } from '../../synthesis/synthesizer.js';
 import { resolveApp } from '../config-loader.js';
-import { CliCommand } from '../cli-parser.js';
+import type { CliCommand } from '../cli-parser.js';
 
 async function synthCommand(
   _args: string[],

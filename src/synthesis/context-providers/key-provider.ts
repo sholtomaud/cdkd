@@ -11,10 +11,10 @@ import { getLogger } from '../../utils/logger.js';
 export class KeyContextProvider implements ContextProvider {
   private logger = getLogger().child('KeyContextProvider');
 
-    private awsConfig?: ContextProviderAwsConfig;
+  private awsConfig: ContextProviderAwsConfig | undefined;
 
   constructor(awsConfig?: ContextProviderAwsConfig) {
-    this.awsConfig = awsConfig;
+    this.awsConfig = awsConfig ?? undefined;
   }
 
   async resolve(props: Record<string, unknown>): Promise<unknown> {

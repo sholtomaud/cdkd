@@ -9,6 +9,7 @@ export class DagBuilder {
   private parser = new TemplateParser();
 
   buildGraph(template: CloudFormationTemplate): Graph {
+    this.logger.debug('Building DAG for template');
     const graph = new Graph({ directed: true });
     const resourceIds = this.parser.getResourceIds(template);
     resourceIds.forEach((logicalId) => {
@@ -37,7 +38,9 @@ export class DagBuilder {
     graph.nodes().forEach((node) => graphCopy.setNode(node, graph.node(node)));
     graph.edges().forEach((edge) => graphCopy.setEdge(edge.v, edge.w));
     while (graphCopy.nodeCount() > 0) {
-      const readyNodes = graphCopy.nodes().filter((node) => graphCopy.predecessors(node).length === 0);
+      const readyNodes = graphCopy
+        .nodes()
+        .filter((node) => graphCopy.predecessors(node).length === 0);
       if (readyNodes.length === 0) throw new DependencyError('Circular dependency detected');
       levels.push(readyNodes);
       readyNodes.forEach((node) => graphCopy.removeNode(node));

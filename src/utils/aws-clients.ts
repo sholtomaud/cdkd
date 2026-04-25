@@ -53,7 +53,7 @@ export class AwsClients {
   private cloudWatchLogsClient?: CloudWatchLogsClient;
   private bedrockAgentCoreControlClient?: BedrockAgentCoreControlClient;
 
-    private config: AwsClientConfig;
+  private config: AwsClientConfig;
 
   constructor(config: AwsClientConfig = {}) {
     this.config = config;

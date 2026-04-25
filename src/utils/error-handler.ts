@@ -2,9 +2,9 @@ import { getLogger } from './logger.js';
 
 export class CdkdError extends Error {
   public readonly code: string;
-  public readonly cause?: Error;
+  public readonly cause: Error | undefined;
 
-  constructor(message: string, code: string, cause?: Error) {
+  constructor(message: string, code: string, cause: Error | undefined = undefined) {
     super(message);
     this.code = code;
     this.cause = cause;
@@ -16,14 +16,14 @@ export class CdkdError extends Error {
 export class ProvisioningError extends CdkdError {
   public readonly resourceType: string;
   public readonly logicalId: string;
-  public readonly physicalId?: string;
+  public readonly physicalId: string | undefined;
 
   constructor(
     message: string,
     resourceType: string,
     logicalId: string,
-    physicalId?: string,
-    cause?: Error
+    physicalId: string | undefined = undefined,
+    cause: Error | undefined = undefined
   ) {
     super(message, 'PROVISIONING_ERROR', cause);
     this.resourceType = resourceType;
@@ -33,33 +33,52 @@ export class ProvisioningError extends CdkdError {
 }
 
 export class DependencyError extends CdkdError {
-  constructor(message: string, cause?: Error) {
+  constructor(message: string, cause: Error | undefined = undefined) {
     super(message, 'DEPENDENCY_ERROR', cause);
   }
 }
 
 export class SynthesisError extends CdkdError {
-  constructor(message: string, cause?: Error) {
+  constructor(message: string, cause: Error | undefined = undefined) {
     super(message, 'SYNTHESIS_ERROR', cause);
   }
 }
 
 export class AssetError extends CdkdError {
-  constructor(message: string, cause?: Error) {
+  constructor(message: string, cause: Error | undefined = undefined) {
     super(message, 'ASSET_ERROR', cause);
   }
 }
 
 export class StateError extends CdkdError {
-  constructor(message: string, cause?: Error) {
+  constructor(message: string, cause: Error | undefined = undefined) {
     super(message, 'STATE_ERROR', cause);
   }
 }
 
 export class LockError extends CdkdError {
-  constructor(message: string, cause?: Error) {
+  constructor(message: string, cause: Error | undefined = undefined) {
     super(message, 'LOCK_ERROR', cause);
   }
+}
+
+export class ConfigError extends CdkdError {
+  constructor(message: string, cause: Error | undefined = undefined) {
+    super(message, 'CONFIG_ERROR', cause);
+  }
+}
+
+export function isCdkdError(error: any): error is CdkdError {
+  return error instanceof CdkdError;
+}
+
+export function formatError(error: any): string {
+  if (error instanceof CdkdError) {
+    let msg = `[${error.code}] ${error.message}`;
+    if (error.cause) msg += ` (Cause: ${error.cause.message})`;
+    return msg;
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function withErrorHandling<T extends any[], R>(

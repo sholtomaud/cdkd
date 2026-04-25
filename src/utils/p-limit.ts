@@ -8,7 +8,11 @@ export function pLimit(concurrency: number) {
       if (run) run();
     }
   };
-  const run = async (fn: () => Promise<any>, resolve: (val: any) => void, reject: (err: any) => void) => {
+  const run = async (
+    fn: () => Promise<any>,
+    resolve: (val: any) => void,
+    reject: (err: any) => void
+  ) => {
     activeCount++;
     try {
       const result = await fn();

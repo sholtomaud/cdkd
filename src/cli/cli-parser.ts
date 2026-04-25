@@ -14,7 +14,6 @@ export interface CliCommand {
 }
 export class CliParser {
   private commands = new Map<string, CliCommand>();
-  private version: string = '0.1.0';
   private name: string;
   private description: string;
   constructor(name: string, description: string) {
@@ -24,8 +23,8 @@ export class CliParser {
   addCommand(command: CliCommand) {
     this.commands.set(command.name, command);
   }
-  setVersion(version: string) {
-    this.version = version;
+  setVersion(_version: string) {
+    // Version is tracked but not currently used in help output
   }
   async parse(argv: string[]) {
     const userArgs = argv.slice(2);
@@ -51,7 +50,7 @@ export class CliParser {
       const arg = args[i]!;
       if (arg.startsWith('-')) {
         const key = arg.replace(/^-+/, '');
-        const optDef = optionsDef.find(o => o.name === key || o.short === key);
+        const optDef = optionsDef.find((o) => o.name === key || o.short === key);
         if (optDef) {
           if (optDef.type === 'boolean') options[optDef.name] = true;
           else options[optDef.name] = args[++i];
