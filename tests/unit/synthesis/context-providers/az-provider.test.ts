@@ -1,36 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS SDK
-const mockSend = vi.fn();
-const mockDestroy = vi.fn();
+const mockSend = mock.fn();
+const mockDestroy = mock.fn();
 vi.mock('@aws-sdk/client-ec2', () => ({
-  EC2Client: vi.fn().mockImplementation(() => ({
+  EC2Client: mock.fn().mockImplementation(() => ({
     send: mockSend,
     destroy: mockDestroy,
   })),
-  DescribeAvailabilityZonesCommand: vi.fn().mockImplementation((input) => ({
+  DescribeAvailabilityZonesCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'DescribeAvailabilityZonesCommand',
   })),
 }));
 
 // Mock logger
-vi.mock('../../../../src/utils/logger.js', () => ({
+vi.mock('../../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
-import { AZContextProvider } from '../../../../src/synthesis/context-providers/az-provider.js';
+import { AZContextProvider } from '../../../../src/synthesis/context-providers/az-provider.ts';
 
 describe('AZContextProvider', () => {
   beforeEach(() => {
@@ -49,7 +50,7 @@ describe('AZContextProvider', () => {
     const provider = new AZContextProvider({ region: 'us-east-1' });
     const result = await provider.resolve({});
 
-    expect(result).toEqual(['us-east-1a', 'us-east-1b', 'us-east-1c']);
+    assert.deepStrictEqual(result, ['us-east-1a', 'us-east-1b', 'us-east-1c']);
     expect(mockDestroy).toHaveBeenCalled();
   });
 
@@ -66,7 +67,7 @@ describe('AZContextProvider', () => {
     const provider = new AZContextProvider();
     const result = await provider.resolve({});
 
-    expect(result).toEqual(['us-east-1a', 'us-east-1d']);
+    assert.deepStrictEqual(result, ['us-east-1a', 'us-east-1d']);
   });
 
   it('should use region from props', async () => {
@@ -93,7 +94,7 @@ describe('AZContextProvider', () => {
     const provider = new AZContextProvider({ region: 'us-east-1' });
     const result = await provider.resolve({});
 
-    expect(result).toEqual([]);
+    assert.deepStrictEqual(result, []);
   });
 
   it('should handle undefined AvailabilityZones response', async () => {
@@ -102,6 +103,6 @@ describe('AZContextProvider', () => {
     const provider = new AZContextProvider({ region: 'us-east-1' });
     const result = await provider.resolve({});
 
-    expect(result).toEqual([]);
+    assert.deepStrictEqual(result, []);
   });
 });

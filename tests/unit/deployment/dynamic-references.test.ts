@@ -1,41 +1,42 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import {
   IntrinsicFunctionResolver,
   type ResolverContext,
   resetAccountInfoCache,
-} from '../../../src/deployment/intrinsic-function-resolver.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
+} from '../../../src/deployment/intrinsic-function-resolver.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 // Mock functions for AWS clients
-const mockSecretsManagerSend = vi.fn();
-const mockSSMSend = vi.fn();
+const mockSecretsManagerSend = mock.fn();
+const mockSSMSend = mock.fn();
 
 // Mock AWS clients
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     sts: {
-      send: vi.fn().mockResolvedValue({
+      send: mock.fn().mockResolvedValue({
         Account: '123456789012',
       }),
     },
     ec2: {
-      send: vi.fn().mockResolvedValue({
+      send: mock.fn().mockResolvedValue({
         AvailabilityZones: [],
       }),
     },
@@ -77,7 +78,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:my-secret:SecretString:password::}}'
       );
 
-      expect(result).toBe('s3cr3t');
+      assert.strictEqual(result, 's3cr3t');
       expect(mockSecretsManagerSend).toHaveBeenCalledTimes(1);
     });
 
@@ -90,7 +91,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:my-secret:SecretString:::}}'
       );
 
-      expect(result).toBe('plain-secret-value');
+      assert.strictEqual(result, 'plain-secret-value');
     });
 
     it('should resolve SSM parameter reference', async () => {
@@ -104,7 +105,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:ssm:my-parameter}}'
       );
 
-      expect(result).toBe('my-param-value');
+      assert.strictEqual(result, 'my-param-value');
       expect(mockSSMSend).toHaveBeenCalledTimes(1);
     });
 
@@ -119,7 +120,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:ssm:/prod/db/host}}'
       );
 
-      expect(result).toBe('/prod/db/host-value');
+      assert.strictEqual(result, '/prod/db/host-value');
     });
 
     it('should resolve multiple dynamic references in a single string', async () => {
@@ -137,7 +138,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         'host={{resolve:ssm:/db/host}}&pass={{resolve:secretsmanager:db-creds:SecretString:password::}}'
       );
 
-      expect(result).toBe('host=db.example.com&pass=p@ss');
+      assert.strictEqual(result, 'host=db.example.com&pass=p@ss');
     });
 
     it('should cache resolved values and avoid repeated API calls', async () => {
@@ -150,15 +151,15 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
       const result1 = await resolver.resolveDynamicReferences(ref);
       const result2 = await resolver.resolveDynamicReferences(ref);
 
-      expect(result1).toBe('cached-value');
-      expect(result2).toBe('cached-value');
+      assert.strictEqual(result1, 'cached-value');
+      assert.strictEqual(result2, 'cached-value');
       // Should only call the API once due to caching
       expect(mockSecretsManagerSend).toHaveBeenCalledTimes(1);
     });
 
     it('should return string as-is when no dynamic references present', async () => {
       const result = await resolver.resolveDynamicReferences('just a normal string');
-      expect(result).toBe('just a normal string');
+      assert.strictEqual(result, 'just a normal string');
       expect(mockSecretsManagerSend).not.toHaveBeenCalled();
       expect(mockSSMSend).not.toHaveBeenCalled();
     });
@@ -220,7 +221,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:my-secret:SecretString::AWSPREVIOUS:}}'
       );
 
-      expect(result).toBe('staged-value');
+      assert.strictEqual(result, 'staged-value');
     });
 
     it('should resolve secretsmanager reference with version ID', async () => {
@@ -232,7 +233,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:my-secret:SecretString:::abc-123}}'
       );
 
-      expect(result).toBe('versioned-value');
+      assert.strictEqual(result, 'versioned-value');
     });
 
     it('should resolve secretsmanager reference with ARN-based secret ID', async () => {
@@ -244,7 +245,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:123456789012:secret:SecretName-XXXXX:SecretString:password::}}'
       );
 
-      expect(result).toBe('arn-secret-pass');
+      assert.strictEqual(result, 'arn-secret-pass');
       expect(mockSecretsManagerSend).toHaveBeenCalledTimes(1);
       // Verify the SecretId passed to the API is the full ARN
       const callArgs = mockSecretsManagerSend.mock.calls[0]![0];
@@ -262,7 +263,7 @@ describe('IntrinsicFunctionResolver - Dynamic References', () => {
         '{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:123456789012:secret:MySecret-abc123:SecretString:::}}'
       );
 
-      expect(result).toBe('full-secret-value');
+      assert.strictEqual(result, 'full-secret-value');
     });
   });
 

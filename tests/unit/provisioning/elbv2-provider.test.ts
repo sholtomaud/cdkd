@@ -1,36 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 vi.mock('@aws-sdk/client-elastic-load-balancing-v2', async () => {
   const actual = await vi.importActual('@aws-sdk/client-elastic-load-balancing-v2');
   return {
     ...actual,
-    ElasticLoadBalancingV2Client: vi.fn().mockImplementation(() => ({ send: mockSend })),
+    ElasticLoadBalancingV2Client: mock.fn().mockImplementation(() => ({ send: mockSend })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { ELBv2Provider } from '../../../src/provisioning/providers/elbv2-provider.js';
+import { ELBv2Provider } from '../../../src/provisioning/providers/elbv2-provider.ts';
 
 describe('ELBv2Provider', () => {
   let provider: ELBv2Provider;
@@ -83,9 +84,9 @@ describe('ELBv2Provider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateLoadBalancerCommand');
-        expect(createCall.input.Name).toBe('my-alb');
-        expect(createCall.input.Subnets).toEqual(['subnet-111', 'subnet-222']);
+        assert.strictEqual(createCall.constructor.name, 'CreateLoadBalancerCommand');
+        assert.strictEqual(createCall.input.Name, 'my-alb');
+        assert.deepStrictEqual(createCall.input.Subnets, ['subnet-111', 'subnet-222']);
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -112,7 +113,7 @@ describe('ELBv2Provider', () => {
 
         expect(mockSend).toHaveBeenCalledTimes(1);
         const deleteCall = mockSend.mock.calls[0][0];
-        expect(deleteCall.constructor.name).toBe('DeleteLoadBalancerCommand');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteLoadBalancerCommand');
       });
 
       it('should handle not-found gracefully', async () => {
@@ -183,9 +184,9 @@ describe('ELBv2Provider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateTargetGroupCommand');
-        expect(createCall.input.Protocol).toBe('HTTP');
-        expect(createCall.input.Port).toBe(80);
+        assert.strictEqual(createCall.constructor.name, 'CreateTargetGroupCommand');
+        assert.strictEqual(createCall.input.Protocol, 'HTTP');
+        assert.strictEqual(createCall.input.Port, 80);
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -234,7 +235,7 @@ describe('ELBv2Provider', () => {
         expect(result.physicalId).toBe(
           'arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/my-tg/1234567890abcdef'
         );
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.wasReplaced, false);
         expect(result.attributes).toEqual({
           TargetGroupArn:
             'arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/my-tg/1234567890abcdef',
@@ -244,11 +245,11 @@ describe('ELBv2Provider', () => {
         expect(mockSend).toHaveBeenCalledTimes(2);
 
         const modifyCall = mockSend.mock.calls[0][0];
-        expect(modifyCall.constructor.name).toBe('ModifyTargetGroupCommand');
-        expect(modifyCall.input.HealthCheckPath).toBe('/healthz');
+        assert.strictEqual(modifyCall.constructor.name, 'ModifyTargetGroupCommand');
+        assert.strictEqual(modifyCall.input.HealthCheckPath, '/healthz');
 
         const describeCall = mockSend.mock.calls[1][0];
-        expect(describeCall.constructor.name).toBe('DescribeTargetGroupsCommand');
+        assert.strictEqual(describeCall.constructor.name, 'DescribeTargetGroupsCommand');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -278,7 +279,7 @@ describe('ELBv2Provider', () => {
 
         expect(mockSend).toHaveBeenCalledTimes(1);
         const deleteCall = mockSend.mock.calls[0][0];
-        expect(deleteCall.constructor.name).toBe('DeleteTargetGroupCommand');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteTargetGroupCommand');
       });
 
       it('should handle not-found gracefully', async () => {
@@ -339,9 +340,9 @@ describe('ELBv2Provider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateListenerCommand');
-        expect(createCall.input.Port).toBe(80);
-        expect(createCall.input.Protocol).toBe('HTTP');
+        assert.strictEqual(createCall.constructor.name, 'CreateListenerCommand');
+        assert.strictEqual(createCall.input.Port, 80);
+        assert.strictEqual(createCall.input.Protocol, 'HTTP');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -378,14 +379,14 @@ describe('ELBv2Provider', () => {
           }
         );
 
-        expect(result.physicalId).toBe(listenerArn);
-        expect(result.wasReplaced).toBe(false);
-        expect(result.attributes).toEqual({ ListenerArn: listenerArn });
+        assert.strictEqual(result.physicalId, listenerArn);
+        assert.strictEqual(result.wasReplaced, false);
+        assert.deepStrictEqual(result.attributes, { ListenerArn: listenerArn });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const modifyCall = mockSend.mock.calls[0][0];
-        expect(modifyCall.constructor.name).toBe('ModifyListenerCommand');
-        expect(modifyCall.input.Port).toBe(8080);
+        assert.strictEqual(modifyCall.constructor.name, 'ModifyListenerCommand');
+        assert.strictEqual(modifyCall.input.Port, 8080);
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -415,7 +416,7 @@ describe('ELBv2Provider', () => {
 
         expect(mockSend).toHaveBeenCalledTimes(1);
         const deleteCall = mockSend.mock.calls[0][0];
-        expect(deleteCall.constructor.name).toBe('DeleteListenerCommand');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteListenerCommand');
       });
 
       it('should handle not-found gracefully', async () => {

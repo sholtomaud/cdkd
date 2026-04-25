@@ -1,37 +1,38 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-kms', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-kms')>();
   return {
     ...actual,
-    KMSClient: vi.fn().mockImplementation(() => ({
+    KMSClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { KMSProvider } from '../../../../src/provisioning/providers/kms-provider.js';
+import { KMSProvider } from '../../../../src/provisioning/providers/kms-provider.ts';
 import {
   CreateKeyCommand,
   EnableKeyRotationCommand,
@@ -66,7 +67,7 @@ describe('KMSProvider', () => {
           Description: 'Test key',
         });
 
-        expect(result.physicalId).toBe('key-123');
+        assert.strictEqual(result.physicalId, 'key-123');
         expect(result.attributes).toEqual({
           Arn: 'arn:aws:kms:us-east-1:123456789012:key/key-123',
           KeyId: 'key-123',
@@ -88,7 +89,7 @@ describe('KMSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(2);
         expect(mockSend.mock.calls[0][0]).toBeInstanceOf(CreateKeyCommand);
         expect(mockSend.mock.calls[1][0]).toBeInstanceOf(EnableKeyRotationCommand);
-        expect(mockSend.mock.calls[1][0].input).toEqual({ KeyId: 'key-123' });
+        assert.deepStrictEqual(mockSend.mock.calls[1][0].input, { KeyId: 'key-123' });
       });
 
       it('should JSON.stringify KeyPolicy when it is an object', async () => {
@@ -108,7 +109,7 @@ describe('KMSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
         const command = mockSend.mock.calls[0][0];
         expect(command).toBeInstanceOf(CreateKeyCommand);
-        expect(command.input.Policy).toBe(JSON.stringify(keyPolicy));
+        assert.strictEqual(command.input.Policy, JSON.stringify(keyPolicy));
       });
     });
 
@@ -143,7 +144,7 @@ describe('KMSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
         const command = mockSend.mock.calls[0][0];
         expect(command).toBeInstanceOf(EnableKeyRotationCommand);
-        expect(command.input).toEqual({ KeyId: 'key-123' });
+        assert.deepStrictEqual(command.input, { KeyId: 'key-123' });
       });
 
       it('should disable key rotation when changed to false', async () => {
@@ -158,7 +159,7 @@ describe('KMSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
         const command = mockSend.mock.calls[0][0];
         expect(command).toBeInstanceOf(DisableKeyRotationCommand);
-        expect(command.input).toEqual({ KeyId: 'key-123' });
+        assert.deepStrictEqual(command.input, { KeyId: 'key-123' });
       });
 
       it('should update key policy when changed', async () => {
@@ -225,8 +226,8 @@ describe('KMSProvider', () => {
           TargetKeyId: 'key-123',
         });
 
-        expect(result.physicalId).toBe('alias/my-key');
-        expect(result.attributes).toEqual({});
+        assert.strictEqual(result.physicalId, 'alias/my-key');
+        assert.deepStrictEqual(result.attributes, {});
         expect(mockSend).toHaveBeenCalledTimes(1);
         const command = mockSend.mock.calls[0][0];
         expect(command).toBeInstanceOf(CreateAliasCommand);
@@ -249,8 +250,8 @@ describe('KMSProvider', () => {
           TargetKeyId: 'key-123',
         });
 
-        expect(result.physicalId).toBe('alias/my-key');
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.physicalId, 'alias/my-key');
+        assert.strictEqual(result.wasReplaced, false);
         expect(mockSend).toHaveBeenCalledTimes(1);
         const command = mockSend.mock.calls[0][0];
         expect(command).toBeInstanceOf(UpdateAliasCommand);

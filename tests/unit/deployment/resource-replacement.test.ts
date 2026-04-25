@@ -1,30 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DeployEngine } from '../../../src/deployment/deploy-engine.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
-import type { ResourceChange, StackState } from '../../../src/types/state.js';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
+import { DeployEngine } from '../../../src/deployment/deploy-engine.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
+import type { ResourceChange, StackState } from '../../../src/types/state.ts';
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 // Mock IntrinsicFunctionResolver - resolve returns properties as-is, others are no-ops
-vi.mock('../../../src/deployment/intrinsic-function-resolver.js', () => ({
-  IntrinsicFunctionResolver: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
-    resolveParameters: vi.fn().mockReturnValue({}),
-    evaluateConditions: vi.fn().mockResolvedValue({}),
+vi.mock('../../../src/deployment/intrinsic-function-resolver.ts', () => ({
+  IntrinsicFunctionResolver: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
+    resolveParameters: mock.fn().mockReturnValue({}),
+    evaluateConditions: mock.fn().mockResolvedValue({}),
   })),
 }));
 
@@ -99,40 +100,40 @@ describe('DeployEngine - Resource Replacement', () => {
     vi.clearAllMocks();
 
     mockProvider = {
-      create: vi.fn().mockResolvedValue({
+      create: mock.fn().mockResolvedValue({
         physicalId: 'new-bucket-physical-id',
         attributes: { Arn: 'arn:aws:s3:::new-bucket-name' },
       }),
-      update: vi.fn().mockResolvedValue({
+      update: mock.fn().mockResolvedValue({
         physicalId: 'old-bucket-physical-id',
         wasReplaced: false,
       }),
-      delete: vi.fn().mockResolvedValue(undefined),
-      getAttribute: vi.fn(),
+      delete: mock.fn().mockResolvedValue(undefined),
+      getAttribute: mock.fn(),
     };
 
     mockStateBackend = {
-      getState: vi.fn().mockResolvedValue({
+      getState: mock.fn().mockResolvedValue({
         state: { ...currentState, resources: { ...currentState.resources } },
         etag: 'etag-123',
       }),
-      saveState: vi.fn().mockResolvedValue('etag-456'),
+      saveState: mock.fn().mockResolvedValue('etag-456'),
     };
 
     mockLockManager = {
-      acquireLockWithRetry: vi.fn().mockResolvedValue(true),
-      releaseLock: vi.fn().mockResolvedValue(undefined),
+      acquireLockWithRetry: mock.fn().mockResolvedValue(true),
+      releaseLock: mock.fn().mockResolvedValue(undefined),
     };
 
     mockDagBuilder = {
-      buildGraph: vi.fn().mockReturnValue({}),
-      getExecutionLevels: vi.fn().mockReturnValue([['MyBucket']]),
+      buildGraph: mock.fn().mockReturnValue({}),
+      getExecutionLevels: mock.fn().mockReturnValue([['MyBucket']]),
     };
 
     mockDiffCalculator = {
-      calculateDiff: vi.fn(),
-      hasChanges: vi.fn().mockReturnValue(true),
-      filterByType: vi.fn().mockImplementation(
+      calculateDiff: mock.fn(),
+      hasChanges: mock.fn().mockReturnValue(true),
+      filterByType: mock.fn().mockImplementation(
         (changes: Map<string, ResourceChange>, type: string) => {
           return Array.from(changes.values()).filter((c) => c.changeType === type);
         }
@@ -140,8 +141,8 @@ describe('DeployEngine - Resource Replacement', () => {
     };
 
     mockProviderRegistry = {
-      getProvider: vi.fn().mockReturnValue(mockProvider),
-      validateResourceTypes: vi.fn(),
+      getProvider: mock.fn().mockReturnValue(mockProvider),
+      validateResourceTypes: mock.fn(),
     };
   });
 
@@ -203,7 +204,7 @@ describe('DeployEngine - Resource Replacement', () => {
     // saveState is called: partial save after level + final save
     expect(mockStateBackend.saveState).toHaveBeenCalled();
     const savedState = mockStateBackend.saveState.mock.calls[0][1] as StackState;
-    expect(savedState.resources['MyBucket'].physicalId).toBe('new-bucket-physical-id');
+    assert.strictEqual(savedState.resources['MyBucket'].physicalId, 'new-bucket-physical-id');
     expect(savedState.resources['MyBucket'].attributes).toEqual({
       Arn: 'arn:aws:s3:::new-bucket-name',
     });
@@ -212,9 +213,9 @@ describe('DeployEngine - Resource Replacement', () => {
     expect(mockProvider.update).not.toHaveBeenCalled();
 
     // Result should count as an update
-    expect(result.updated).toBe(1);
-    expect(result.created).toBe(0);
-    expect(result.deleted).toBe(0);
+    assert.strictEqual(result.updated, 1);
+    assert.strictEqual(result.created, 0);
+    assert.strictEqual(result.deleted, 0);
   });
 
   it('should perform in-place update when no property requires replacement', async () => {
@@ -302,9 +303,9 @@ describe('DeployEngine - Resource Replacement', () => {
 
     // State should still be saved with the new physicalId
     const savedState = mockStateBackend.saveState.mock.calls[0][1] as StackState;
-    expect(savedState.resources['MyBucket'].physicalId).toBe('new-bucket-physical-id');
+    assert.strictEqual(savedState.resources['MyBucket'].physicalId, 'new-bucket-physical-id');
 
-    expect(result.updated).toBe(1);
+    assert.strictEqual(result.updated, 1);
   });
 
   it('should handle replacement with multiple property changes where only some require replacement', async () => {
@@ -387,7 +388,7 @@ describe('DeployEngine - Resource Replacement', () => {
       mockProviderRegistry as any
     );
 
-    await expect(engine.deploy(stackName, template)).rejects.toThrow();
+    await assert.rejects(async () => { await engine.deploy(stackName, template); }, );
 
     // Lock should still be released
     expect(mockLockManager.releaseLock).toHaveBeenCalledWith(stackName);

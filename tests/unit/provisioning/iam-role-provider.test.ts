@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { NoSuchEntityException } from '@aws-sdk/client-iam';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     iam: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { IAMRoleProvider } from '../../../src/provisioning/providers/iam-role-provider.js';
+import { IAMRoleProvider } from '../../../src/provisioning/providers/iam-role-provider.ts';
 
 describe('IAMRoleProvider', () => {
   let provider: IAMRoleProvider;
@@ -78,7 +79,7 @@ describe('IAMRoleProvider', () => {
       const detachCalls = mockSend.mock.calls.filter(
         (call) => call[0].constructor.name === 'DetachRolePolicyCommand'
       );
-      expect(detachCalls).toHaveLength(2);
+      assert.strictEqual((detachCalls).length, 2);
     });
 
     it('should delete inline policies before deleting role', async () => {
@@ -105,7 +106,7 @@ describe('IAMRoleProvider', () => {
       const deleteInlineCalls = mockSend.mock.calls.filter(
         (call) => call[0].constructor.name === 'DeleteRolePolicyCommand'
       );
-      expect(deleteInlineCalls).toHaveLength(2);
+      assert.strictEqual((deleteInlineCalls).length, 2);
     });
 
     it('should remove role from instance profiles before deleting role', async () => {
@@ -136,7 +137,7 @@ describe('IAMRoleProvider', () => {
         (call) =>
           call[0].constructor.name === 'RemoveRoleFromInstanceProfileCommand'
       );
-      expect(removeFromProfileCalls).toHaveLength(2);
+      assert.strictEqual((removeFromProfileCalls).length, 2);
     });
 
     it('should perform full cleanup: managed policies, inline policies, instance profiles, then delete', async () => {
@@ -170,7 +171,7 @@ describe('IAMRoleProvider', () => {
 
       // Verify order: last call should be DeleteRole
       const lastCall = mockSend.mock.calls[mockSend.mock.calls.length - 1];
-      expect(lastCall[0].constructor.name).toBe('DeleteRoleCommand');
+      assert.strictEqual(lastCall[0].constructor.name, 'DeleteRoleCommand');
     });
 
     it('should handle NoSuchEntityException gracefully when detaching already-detached policy', async () => {

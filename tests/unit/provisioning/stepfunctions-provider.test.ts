@@ -1,38 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 // Mock the SFN client module (local client, not from getAwsClients)
 vi.mock('@aws-sdk/client-sfn', async () => {
   const actual = await vi.importActual('@aws-sdk/client-sfn');
   return {
     ...actual,
-    SFNClient: vi.fn().mockImplementation(() => ({
+    SFNClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { StepFunctionsProvider } from '../../../src/provisioning/providers/stepfunctions-provider.js';
+import { StepFunctionsProvider } from '../../../src/provisioning/providers/stepfunctions-provider.ts';
 
 describe('StepFunctionsProvider', () => {
   let provider: StepFunctionsProvider;
@@ -73,8 +74,8 @@ describe('StepFunctionsProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateStateMachineCommand');
-      expect(createCall.input.name).toBe('my-state-machine');
+      assert.strictEqual(createCall.constructor.name, 'CreateStateMachineCommand');
+      assert.strictEqual(createCall.input.name, 'my-state-machine');
       expect(createCall.input.roleArn).toBe(
         'arn:aws:iam::123456789012:role/step-functions-role'
       );
@@ -97,7 +98,7 @@ describe('StepFunctionsProvider', () => {
       });
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.definition).toBe(JSON.stringify(definitionObj));
+      assert.strictEqual(createCall.input.definition, JSON.stringify(definitionObj));
     });
 
     it('should convert Tags from CDK format ({Key,Value}) to SFN format ({key,value})', async () => {
@@ -134,7 +135,7 @@ describe('StepFunctionsProvider', () => {
       });
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.name).toBe('MyStateMachine');
+      assert.strictEqual(createCall.input.name, 'MyStateMachine');
     });
 
     it('should throw ProvisioningError when RoleArn is missing', async () => {
@@ -178,9 +179,9 @@ describe('StepFunctionsProvider', () => {
       });
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.type).toBe('EXPRESS');
-      expect(createCall.input.loggingConfiguration).toEqual(loggingConfiguration);
-      expect(createCall.input.tracingConfiguration).toEqual(tracingConfiguration);
+      assert.strictEqual(createCall.input.type, 'EXPRESS');
+      assert.deepStrictEqual(createCall.input.loggingConfiguration, loggingConfiguration);
+      assert.deepStrictEqual(createCall.input.tracingConfiguration, tracingConfiguration);
     });
   });
 
@@ -211,7 +212,7 @@ describe('StepFunctionsProvider', () => {
       expect(result.physicalId).toBe(
         'arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine'
       );
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.wasReplaced, false);
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine',
         Name: 'my-state-machine',
@@ -220,14 +221,14 @@ describe('StepFunctionsProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const updateCall = mockSend.mock.calls[0][0];
-      expect(updateCall.constructor.name).toBe('UpdateStateMachineCommand');
+      assert.strictEqual(updateCall.constructor.name, 'UpdateStateMachineCommand');
       expect(updateCall.input.stateMachineArn).toBe(
         'arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine'
       );
-      expect(updateCall.input.roleArn).toBe('arn:aws:iam::123456789012:role/new-role');
+      assert.strictEqual(updateCall.input.roleArn, 'arn:aws:iam::123456789012:role/new-role');
 
       const describeCall = mockSend.mock.calls[1][0];
-      expect(describeCall.constructor.name).toBe('DescribeStateMachineCommand');
+      assert.strictEqual(describeCall.constructor.name, 'DescribeStateMachineCommand');
     });
 
     it('should require replacement when StateMachineName changes', async () => {
@@ -313,7 +314,7 @@ describe('StepFunctionsProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const deleteCall = mockSend.mock.calls[0][0];
-      expect(deleteCall.constructor.name).toBe('DeleteStateMachineCommand');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteStateMachineCommand');
       expect(deleteCall.input.stateMachineArn).toBe(
         'arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine'
       );

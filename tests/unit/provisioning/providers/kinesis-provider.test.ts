@@ -1,38 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-kinesis', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-kinesis')>();
   return {
     ...actual,
-    KinesisClient: vi.fn().mockImplementation(() => ({
+    KinesisClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-vi.mock('../../../../src/provisioning/resource-name.js', () => ({
-  generateResourceName: vi.fn().mockReturnValue('generated-stream-name'),
+vi.mock('../../../../src/provisioning/resource-name.ts', () => ({
+  generateResourceName: mock.fn().mockReturnValue('generated-stream-name'),
 }));
 
 import {
@@ -43,7 +44,7 @@ import {
   UpdateShardCountCommand,
   ResourceNotFoundException,
 } from '@aws-sdk/client-kinesis';
-import { KinesisStreamProvider } from '../../../../src/provisioning/providers/kinesis-provider.js';
+import { KinesisStreamProvider } from '../../../../src/provisioning/providers/kinesis-provider.ts';
 
 describe('KinesisStreamProvider', () => {
   let provider: KinesisStreamProvider;
@@ -72,7 +73,7 @@ describe('KinesisStreamProvider', () => {
         ShardCount: 2,
       });
 
-      expect(result.physicalId).toBe('test-stream');
+      assert.strictEqual(result.physicalId, 'test-stream');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:kinesis:us-east-1:123456789012:stream/test-stream',
       });
@@ -80,7 +81,7 @@ describe('KinesisStreamProvider', () => {
       const createCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof CreateStreamCommand
       );
-      expect(createCall).toBeDefined();
+      assert.notStrictEqual(createCall, undefined);
       expect(createCall![0].input).toEqual({
         StreamName: 'test-stream',
         ShardCount: 2,
@@ -111,12 +112,12 @@ describe('KinesisStreamProvider', () => {
         ],
       });
 
-      expect(result.physicalId).toBe('tagged-stream');
+      assert.strictEqual(result.physicalId, 'tagged-stream');
 
       const addTagsCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof AddTagsToStreamCommand
       );
-      expect(addTagsCall).toBeDefined();
+      assert.notStrictEqual(addTagsCall, undefined);
       expect(addTagsCall![0].input).toEqual({
         StreamName: 'tagged-stream',
         Tags: { Environment: 'test', Project: 'cdkd' },
@@ -141,12 +142,12 @@ describe('KinesisStreamProvider', () => {
         StreamModeDetails: { StreamMode: 'ON_DEMAND' },
       });
 
-      expect(result.physicalId).toBe('ondemand-stream');
+      assert.strictEqual(result.physicalId, 'ondemand-stream');
 
       const createCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof CreateStreamCommand
       );
-      expect(createCall).toBeDefined();
+      assert.notStrictEqual(createCall, undefined);
       // ON_DEMAND mode should NOT include ShardCount
       expect(createCall![0].input).toEqual({
         StreamName: 'ondemand-stream',
@@ -172,12 +173,12 @@ describe('KinesisStreamProvider', () => {
         ShardCount: 1,
       });
 
-      expect(result.physicalId).toBe('generated-stream-name');
+      assert.strictEqual(result.physicalId, 'generated-stream-name');
 
       const createCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof CreateStreamCommand
       );
-      expect(createCall![0].input.StreamName).toBe('generated-stream-name');
+      assert.strictEqual(createCall![0].input.StreamName, 'generated-stream-name');
     });
   });
 
@@ -235,7 +236,7 @@ describe('KinesisStreamProvider', () => {
         { ShardCount: 2 }
       );
 
-      expect(result.physicalId).toBe('test-stream');
+      assert.strictEqual(result.physicalId, 'test-stream');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:kinesis:us-east-1:123456789012:stream/test-stream',
       });
@@ -243,7 +244,7 @@ describe('KinesisStreamProvider', () => {
       const updateCall = mockSend.mock.calls.find(
         (call: unknown[]) => call[0] instanceof UpdateShardCountCommand
       );
-      expect(updateCall).toBeDefined();
+      assert.notStrictEqual(updateCall, undefined);
       expect(updateCall![0].input).toEqual({
         StreamName: 'test-stream',
         TargetShardCount: 4,

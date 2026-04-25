@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { ResourceNotFoundException } from '@aws-sdk/client-eventbridge';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     eventBridge: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { EventBridgeRuleProvider } from '../../../src/provisioning/providers/eventbridge-rule-provider.js';
+import { EventBridgeRuleProvider } from '../../../src/provisioning/providers/eventbridge-rule-provider.ts';
 
 describe('EventBridgeRuleProvider', () => {
   let provider: EventBridgeRuleProvider;
@@ -51,14 +52,14 @@ describe('EventBridgeRuleProvider', () => {
         State: 'ENABLED',
       });
 
-      expect(result.physicalId).toBe('arn:aws:events:us-east-1:123456789012:rule/my-rule');
+      assert.strictEqual(result.physicalId, 'arn:aws:events:us-east-1:123456789012:rule/my-rule');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:events:us-east-1:123456789012:rule/my-rule',
       });
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const putRuleCall = mockSend.mock.calls[0][0];
-      expect(putRuleCall.constructor.name).toBe('PutRuleCommand');
+      assert.strictEqual(putRuleCall.constructor.name, 'PutRuleCommand');
     });
 
     it('should create a rule with targets', async () => {
@@ -77,11 +78,11 @@ describe('EventBridgeRuleProvider', () => {
         ],
       });
 
-      expect(result.physicalId).toBe('arn:aws:events:us-east-1:123456789012:rule/my-rule');
+      assert.strictEqual(result.physicalId, 'arn:aws:events:us-east-1:123456789012:rule/my-rule');
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const putTargetsCall = mockSend.mock.calls[1][0];
-      expect(putTargetsCall.constructor.name).toBe('PutTargetsCommand');
+      assert.strictEqual(putTargetsCall.constructor.name, 'PutTargetsCommand');
     });
 
     it('should use logicalId as rule name when Name is not provided', async () => {
@@ -94,7 +95,7 @@ describe('EventBridgeRuleProvider', () => {
       });
 
       const putRuleCall = mockSend.mock.calls[0][0];
-      expect(putRuleCall.input.Name).toBe('MyRule');
+      assert.strictEqual(putRuleCall.input.Name, 'MyRule');
     });
 
     it('should stringify EventPattern if it is an object', async () => {
@@ -110,7 +111,7 @@ describe('EventBridgeRuleProvider', () => {
       });
 
       const putRuleCall = mockSend.mock.calls[0][0];
-      expect(putRuleCall.input.EventPattern).toBe(JSON.stringify(eventPattern));
+      assert.strictEqual(putRuleCall.input.EventPattern, JSON.stringify(eventPattern));
     });
 
     it('should pass EventPattern as-is if it is already a string', async () => {
@@ -126,7 +127,7 @@ describe('EventBridgeRuleProvider', () => {
       });
 
       const putRuleCall = mockSend.mock.calls[0][0];
-      expect(putRuleCall.input.EventPattern).toBe(eventPattern);
+      assert.strictEqual(putRuleCall.input.EventPattern, eventPattern);
     });
 
     it('should pass all supported properties to PutRuleCommand', async () => {
@@ -144,12 +145,12 @@ describe('EventBridgeRuleProvider', () => {
       });
 
       const putRuleCall = mockSend.mock.calls[0][0];
-      expect(putRuleCall.input.Name).toBe('my-rule');
-      expect(putRuleCall.input.Description).toBe('My test rule');
-      expect(putRuleCall.input.EventBusName).toBe('custom-bus');
-      expect(putRuleCall.input.State).toBe('DISABLED');
-      expect(putRuleCall.input.ScheduleExpression).toBe('rate(1 hour)');
-      expect(putRuleCall.input.RoleArn).toBe('arn:aws:iam::123456789012:role/my-role');
+      assert.strictEqual(putRuleCall.input.Name, 'my-rule');
+      assert.strictEqual(putRuleCall.input.Description, 'My test rule');
+      assert.strictEqual(putRuleCall.input.EventBusName, 'custom-bus');
+      assert.strictEqual(putRuleCall.input.State, 'DISABLED');
+      assert.strictEqual(putRuleCall.input.ScheduleExpression, 'rate(1 hour)');
+      assert.strictEqual(putRuleCall.input.RoleArn, 'arn:aws:iam::123456789012:role/my-role');
     });
 
     it('should throw ProvisioningError on failure', async () => {
@@ -187,8 +188,8 @@ describe('EventBridgeRuleProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('arn:aws:events:us-east-1:123456789012:rule/my-rule');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'arn:aws:events:us-east-1:123456789012:rule/my-rule');
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).toHaveBeenCalledTimes(1);
     });
 
@@ -222,15 +223,15 @@ describe('EventBridgeRuleProvider', () => {
         }
       );
 
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).toHaveBeenCalledTimes(3);
 
       const removeTargetsCall = mockSend.mock.calls[1][0];
-      expect(removeTargetsCall.constructor.name).toBe('RemoveTargetsCommand');
-      expect(removeTargetsCall.input.Ids).toEqual(['Target1']);
+      assert.strictEqual(removeTargetsCall.constructor.name, 'RemoveTargetsCommand');
+      assert.deepStrictEqual(removeTargetsCall.input.Ids, ['Target1']);
 
       const putTargetsCall = mockSend.mock.calls[2][0];
-      expect(putTargetsCall.constructor.name).toBe('PutTargetsCommand');
+      assert.strictEqual(putTargetsCall.constructor.name, 'PutTargetsCommand');
     });
 
     it('should not call RemoveTargets if no old targets need removal', async () => {
@@ -300,15 +301,15 @@ describe('EventBridgeRuleProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(3);
 
       const listTargetsCall = mockSend.mock.calls[0][0];
-      expect(listTargetsCall.constructor.name).toBe('ListTargetsByRuleCommand');
+      assert.strictEqual(listTargetsCall.constructor.name, 'ListTargetsByRuleCommand');
 
       const removeTargetsCall = mockSend.mock.calls[1][0];
-      expect(removeTargetsCall.constructor.name).toBe('RemoveTargetsCommand');
-      expect(removeTargetsCall.input.Ids).toEqual(['Target1']);
+      assert.strictEqual(removeTargetsCall.constructor.name, 'RemoveTargetsCommand');
+      assert.deepStrictEqual(removeTargetsCall.input.Ids, ['Target1']);
 
       const deleteRuleCall = mockSend.mock.calls[2][0];
-      expect(deleteRuleCall.constructor.name).toBe('DeleteRuleCommand');
-      expect(deleteRuleCall.input.Name).toBe('my-rule');
+      assert.strictEqual(deleteRuleCall.constructor.name, 'DeleteRuleCommand');
+      assert.strictEqual(deleteRuleCall.input.Name, 'my-rule');
     });
 
     it('should delete rule with no targets', async () => {
@@ -371,10 +372,10 @@ describe('EventBridgeRuleProvider', () => {
       );
 
       const listTargetsCall = mockSend.mock.calls[0][0];
-      expect(listTargetsCall.input.Rule).toBe('my-rule');
+      assert.strictEqual(listTargetsCall.input.Rule, 'my-rule');
 
       const deleteRuleCall = mockSend.mock.calls[1][0];
-      expect(deleteRuleCall.input.Name).toBe('my-rule');
+      assert.strictEqual(deleteRuleCall.input.Name, 'my-rule');
     });
 
     it('should handle non-ARN physicalId (already a rule name)', async () => {
@@ -386,7 +387,7 @@ describe('EventBridgeRuleProvider', () => {
       await provider.delete('MyRule', 'my-rule', 'AWS::Events::Rule');
 
       const listTargetsCall = mockSend.mock.calls[0][0];
-      expect(listTargetsCall.input.Rule).toBe('my-rule');
+      assert.strictEqual(listTargetsCall.input.Rule, 'my-rule');
     });
 
     it('should throw ProvisioningError on unexpected failure', async () => {
@@ -414,10 +415,10 @@ describe('EventBridgeRuleProvider', () => {
         'Arn'
       );
 
-      expect(arn).toBe('arn:aws:events:us-east-1:123456789012:rule/my-rule');
+      assert.strictEqual(arn, 'arn:aws:events:us-east-1:123456789012:rule/my-rule');
 
       const describeCall = mockSend.mock.calls[0][0];
-      expect(describeCall.constructor.name).toBe('DescribeRuleCommand');
+      assert.strictEqual(describeCall.constructor.name, 'DescribeRuleCommand');
     });
 
     it('should throw for unsupported attribute', async () => {

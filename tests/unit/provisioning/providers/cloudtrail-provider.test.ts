@@ -1,37 +1,38 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
-const mockSend = vi.hoisted(() => vi.fn());
+const mockSend = vi.hoisted(() => mock.fn());
 
 vi.mock('@aws-sdk/client-cloudtrail', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@aws-sdk/client-cloudtrail')>();
   return {
     ...actual,
-    CloudTrailClient: vi.fn().mockImplementation(() => ({
+    CloudTrailClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../../src/utils/logger.js', () => {
+vi.mock('../../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { CloudTrailProvider } from '../../../../src/provisioning/providers/cloudtrail-provider.js';
+import { CloudTrailProvider } from '../../../../src/provisioning/providers/cloudtrail-provider.ts';
 import {
   CreateTrailCommand,
   DeleteTrailCommand,
@@ -180,8 +181,8 @@ describe('CloudTrailProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe(trailArn);
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, trailArn);
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
       expect(command).toBeInstanceOf(UpdateTrailCommand);
@@ -217,7 +218,7 @@ describe('CloudTrailProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
       expect(mockSend.mock.calls[0][0]).toBeInstanceOf(UpdateTrailCommand);
       expect(mockSend.mock.calls[1][0]).toBeInstanceOf(StopLoggingCommand);
-      expect(mockSend.mock.calls[1][0].input).toEqual({ Name: trailArn });
+      assert.deepStrictEqual(mockSend.mock.calls[1][0].input, { Name: trailArn });
     });
   });
 
@@ -233,9 +234,9 @@ describe('CloudTrailProvider', () => {
 
       expect(mockSend).toHaveBeenCalledTimes(2);
       expect(mockSend.mock.calls[0][0]).toBeInstanceOf(StopLoggingCommand);
-      expect(mockSend.mock.calls[0][0].input).toEqual({ Name: trailArn });
+      assert.deepStrictEqual(mockSend.mock.calls[0][0].input, { Name: trailArn });
       expect(mockSend.mock.calls[1][0]).toBeInstanceOf(DeleteTrailCommand);
-      expect(mockSend.mock.calls[1][0].input).toEqual({ Name: trailArn });
+      assert.deepStrictEqual(mockSend.mock.calls[1][0].input, { Name: trailArn });
     });
 
     it('should not throw when trail is not found', async () => {

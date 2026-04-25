@@ -1,30 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock node:fs
 vi.mock('node:fs', () => ({
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  existsSync: vi.fn(),
+  readFileSync: mock.fn(),
+  writeFileSync: mock.fn(),
+  existsSync: mock.fn(),
 }));
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { ContextStore } from '../../../src/synthesis/context-store.js';
+import { ContextStore } from '../../../src/synthesis/context-store.ts';
 
 describe('ContextStore', () => {
   let store: ContextStore;
@@ -40,7 +41,7 @@ describe('ContextStore', () => {
 
       const result = store.load('/project');
 
-      expect(result).toEqual({});
+      assert.deepStrictEqual(result, {});
     });
 
     it('should load and parse cdk.context.json', () => {
@@ -80,7 +81,7 @@ describe('ContextStore', () => {
 
       const result = store.load('/project');
 
-      expect(result).toEqual({});
+      assert.deepStrictEqual(result, {});
     });
   });
 

@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { NoSuchCloudFrontOriginAccessIdentity } from '@aws-sdk/client-cloudfront';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     cloudFront: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { CloudFrontOAIProvider } from '../../../src/provisioning/providers/cloudfront-oai-provider.js';
+import { CloudFrontOAIProvider } from '../../../src/provisioning/providers/cloudfront-oai-provider.ts';
 
 describe('CloudFrontOAIProvider', () => {
   let provider: CloudFrontOAIProvider;
@@ -58,7 +59,7 @@ describe('CloudFrontOAIProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('E1ABCDEF123456');
+      assert.strictEqual(result.physicalId, 'E1ABCDEF123456');
       expect(result.attributes).toEqual({
         Id: 'E1ABCDEF123456',
         S3CanonicalUserId: 'abc123canonical',
@@ -66,8 +67,8 @@ describe('CloudFrontOAIProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateCloudFrontOriginAccessIdentityCommand');
-      expect(createCall.input.CloudFrontOriginAccessIdentityConfig.CallerReference).toBe('MyOAI');
+      assert.strictEqual(createCall.constructor.name, 'CreateCloudFrontOriginAccessIdentityCommand');
+      assert.strictEqual(createCall.input.CloudFrontOriginAccessIdentityConfig.CallerReference, 'MyOAI');
       expect(createCall.input.CloudFrontOriginAccessIdentityConfig.Comment).toBe(
         'My OAI comment'
       );
@@ -87,11 +88,11 @@ describe('CloudFrontOAIProvider', () => {
         {}
       );
 
-      expect(result.physicalId).toBe('E1ABCDEF123456');
+      assert.strictEqual(result.physicalId, 'E1ABCDEF123456');
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.CloudFrontOriginAccessIdentityConfig.Comment).toBe('');
+      assert.strictEqual(createCall.input.CloudFrontOriginAccessIdentityConfig.Comment, '');
     });
 
     it('should use logicalId as CallerReference', async () => {
@@ -145,8 +146,8 @@ describe('CloudFrontOAIProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('E1ABCDEF123456');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'E1ABCDEF123456');
+      assert.strictEqual(result.wasReplaced, false);
       expect(mockSend).not.toHaveBeenCalled();
     });
   });
@@ -173,13 +174,13 @@ describe('CloudFrontOAIProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.constructor.name).toBe('GetCloudFrontOriginAccessIdentityCommand');
-      expect(getCall.input.Id).toBe('E1ABCDEF123456');
+      assert.strictEqual(getCall.constructor.name, 'GetCloudFrontOriginAccessIdentityCommand');
+      assert.strictEqual(getCall.input.Id, 'E1ABCDEF123456');
 
       const deleteCall = mockSend.mock.calls[1][0];
-      expect(deleteCall.constructor.name).toBe('DeleteCloudFrontOriginAccessIdentityCommand');
-      expect(deleteCall.input.Id).toBe('E1ABCDEF123456');
-      expect(deleteCall.input.IfMatch).toBe('E2QWRUHAPOMQZL');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteCloudFrontOriginAccessIdentityCommand');
+      assert.strictEqual(deleteCall.input.Id, 'E1ABCDEF123456');
+      assert.strictEqual(deleteCall.input.IfMatch, 'E2QWRUHAPOMQZL');
     });
 
     it('should skip deletion when OAI does not exist (on Get)', async () => {
@@ -245,7 +246,7 @@ describe('CloudFrontOAIProvider', () => {
         'Id'
       );
 
-      expect(id).toBe('E1ABCDEF123456');
+      assert.strictEqual(id, 'E1ABCDEF123456');
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -263,11 +264,11 @@ describe('CloudFrontOAIProvider', () => {
         'S3CanonicalUserId'
       );
 
-      expect(userId).toBe('abc123canonical');
+      assert.strictEqual(userId, 'abc123canonical');
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.constructor.name).toBe('GetCloudFrontOriginAccessIdentityCommand');
+      assert.strictEqual(getCall.constructor.name, 'GetCloudFrontOriginAccessIdentityCommand');
     });
 
     it('should throw for unsupported attribute', async () => {

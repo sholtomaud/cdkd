@@ -1,4 +1,4 @@
-import pLimit from 'p-limit';
+import { pLimit } from '../utils/p-limit.js';
 import { getLogger } from '../utils/logger.js';
 import { ProvisioningError } from '../utils/error-handler.js';
 import { setCurrentStackName, applyDefaultNameForFallback } from '../provisioning/resource-name.js';

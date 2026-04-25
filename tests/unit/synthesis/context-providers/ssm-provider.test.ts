@@ -1,36 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS SDK
-const mockSend = vi.fn();
-const mockDestroy = vi.fn();
+const mockSend = mock.fn();
+const mockDestroy = mock.fn();
 vi.mock('@aws-sdk/client-ssm', () => ({
-  SSMClient: vi.fn().mockImplementation(() => ({
+  SSMClient: mock.fn().mockImplementation(() => ({
     send: mockSend,
     destroy: mockDestroy,
   })),
-  GetParameterCommand: vi.fn().mockImplementation((input) => ({
+  GetParameterCommand: mock.fn().mockImplementation((input) => ({
     ...input,
     _type: 'GetParameterCommand',
   })),
 }));
 
 // Mock logger
-vi.mock('../../../../src/utils/logger.js', () => ({
+vi.mock('../../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
-import { SSMContextProvider } from '../../../../src/synthesis/context-providers/ssm-provider.js';
+import { SSMContextProvider } from '../../../../src/synthesis/context-providers/ssm-provider.ts';
 
 describe('SSMContextProvider', () => {
   beforeEach(() => {
@@ -48,7 +49,7 @@ describe('SSMContextProvider', () => {
     const provider = new SSMContextProvider({ region: 'us-east-1' });
     const result = await provider.resolve({ parameterName: '/my/param' });
 
-    expect(result).toBe('my-value');
+    assert.strictEqual(result, 'my-value');
     expect(mockDestroy).toHaveBeenCalled();
   });
 
@@ -99,7 +100,7 @@ describe('SSMContextProvider', () => {
       dummyValue: 'fallback-value',
     });
 
-    expect(result).toBe('fallback-value');
+    assert.strictEqual(result, 'fallback-value');
   });
 
   it('should throw when ignoreErrorOnMissingContext is true but dummyValue is not set', async () => {

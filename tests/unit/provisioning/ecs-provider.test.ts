@@ -1,38 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 vi.mock('@aws-sdk/client-ecs', async () => {
   const actual = await vi.importActual('@aws-sdk/client-ecs');
   return {
     ...actual,
-    ECSClient: vi.fn().mockImplementation(() => ({
+    ECSClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
     })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { ECSProvider } from '../../../src/provisioning/providers/ecs-provider.js';
+import { ECSProvider } from '../../../src/provisioning/providers/ecs-provider.ts';
 
 describe('ECSProvider', () => {
   let provider: ECSProvider;
@@ -58,15 +59,15 @@ describe('ECSProvider', () => {
           ClusterName: 'my-cluster',
         });
 
-        expect(result.physicalId).toBe('my-cluster');
+        assert.strictEqual(result.physicalId, 'my-cluster');
         expect(result.attributes).toEqual({
           Arn: 'arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster',
         });
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateClusterCommand');
-        expect(createCall.input.clusterName).toBe('my-cluster');
+        assert.strictEqual(createCall.constructor.name, 'CreateClusterCommand');
+        assert.strictEqual(createCall.input.clusterName, 'my-cluster');
       });
 
       it('should use logicalId as cluster name when ClusterName is not provided', async () => {
@@ -79,10 +80,10 @@ describe('ECSProvider', () => {
 
         const result = await provider.create('MyCluster', 'AWS::ECS::Cluster', {});
 
-        expect(result.physicalId).toBe('MyCluster');
+        assert.strictEqual(result.physicalId, 'MyCluster');
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.input.clusterName).toBe('MyCluster');
+        assert.strictEqual(createCall.input.clusterName, 'MyCluster');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -109,8 +110,8 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const deleteCall = mockSend.mock.calls[0][0];
-        expect(deleteCall.constructor.name).toBe('DeleteClusterCommand');
-        expect(deleteCall.input.cluster).toBe('my-cluster');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteClusterCommand');
+        assert.strictEqual(deleteCall.input.cluster, 'my-cluster');
       });
 
       it('should handle ClusterNotFoundException', async () => {
@@ -167,12 +168,12 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const registerCall = mockSend.mock.calls[0][0];
-        expect(registerCall.constructor.name).toBe('RegisterTaskDefinitionCommand');
-        expect(registerCall.input.family).toBe('my-task');
-        expect(registerCall.input.cpu).toBe('256');
-        expect(registerCall.input.memory).toBe('512');
-        expect(registerCall.input.networkMode).toBe('awsvpc');
-        expect(registerCall.input.requiresCompatibilities).toEqual(['FARGATE']);
+        assert.strictEqual(registerCall.constructor.name, 'RegisterTaskDefinitionCommand');
+        assert.strictEqual(registerCall.input.family, 'my-task');
+        assert.strictEqual(registerCall.input.cpu, '256');
+        assert.strictEqual(registerCall.input.memory, '512');
+        assert.strictEqual(registerCall.input.networkMode, 'awsvpc');
+        assert.deepStrictEqual(registerCall.input.requiresCompatibilities, ['FARGATE']);
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -220,7 +221,7 @@ describe('ECSProvider', () => {
         expect(result.physicalId).toBe(
           'arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:2'
         );
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.wasReplaced, false);
         expect(result.attributes).toEqual({
           TaskDefinitionArn:
             'arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:2',
@@ -228,10 +229,10 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(2);
 
         const registerCall = mockSend.mock.calls[0][0];
-        expect(registerCall.constructor.name).toBe('RegisterTaskDefinitionCommand');
+        assert.strictEqual(registerCall.constructor.name, 'RegisterTaskDefinitionCommand');
 
         const deregisterCall = mockSend.mock.calls[1][0];
-        expect(deregisterCall.constructor.name).toBe('DeregisterTaskDefinitionCommand');
+        assert.strictEqual(deregisterCall.constructor.name, 'DeregisterTaskDefinitionCommand');
         expect(deregisterCall.input.taskDefinition).toBe(
           'arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1'
         );
@@ -251,7 +252,7 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const deregisterCall = mockSend.mock.calls[0][0];
-        expect(deregisterCall.constructor.name).toBe('DeregisterTaskDefinitionCommand');
+        assert.strictEqual(deregisterCall.constructor.name, 'DeregisterTaskDefinitionCommand');
         expect(deregisterCall.input.taskDefinition).toBe(
           'arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:1'
         );
@@ -310,11 +311,11 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const createCall = mockSend.mock.calls[0][0];
-        expect(createCall.constructor.name).toBe('CreateServiceCommand');
-        expect(createCall.input.cluster).toBe('my-cluster');
-        expect(createCall.input.serviceName).toBe('my-service');
-        expect(createCall.input.desiredCount).toBe(2);
-        expect(createCall.input.launchType).toBe('FARGATE');
+        assert.strictEqual(createCall.constructor.name, 'CreateServiceCommand');
+        assert.strictEqual(createCall.input.cluster, 'my-cluster');
+        assert.strictEqual(createCall.input.serviceName, 'my-service');
+        assert.strictEqual(createCall.input.desiredCount, 2);
+        assert.strictEqual(createCall.input.launchType, 'FARGATE');
       });
 
       it('should throw ProvisioningError on failure', async () => {
@@ -360,15 +361,15 @@ describe('ECSProvider', () => {
         expect(result.physicalId).toBe(
           'arn:aws:ecs:us-east-1:123456789012:service/my-cluster/my-service'
         );
-        expect(result.wasReplaced).toBe(false);
+        assert.strictEqual(result.wasReplaced, false);
         expect(mockSend).toHaveBeenCalledTimes(1);
 
         const updateCall = mockSend.mock.calls[0][0];
-        expect(updateCall.constructor.name).toBe('UpdateServiceCommand');
+        assert.strictEqual(updateCall.constructor.name, 'UpdateServiceCommand');
         expect(updateCall.input.taskDefinition).toBe(
           'arn:aws:ecs:us-east-1:123456789012:task-definition/my-task:2'
         );
-        expect(updateCall.input.desiredCount).toBe(4);
+        assert.strictEqual(updateCall.input.desiredCount, 4);
       });
 
       it('should throw on immutable ServiceName change', async () => {
@@ -407,14 +408,14 @@ describe('ECSProvider', () => {
         expect(mockSend).toHaveBeenCalledTimes(2);
 
         const updateCall = mockSend.mock.calls[0][0];
-        expect(updateCall.constructor.name).toBe('UpdateServiceCommand');
-        expect(updateCall.input.desiredCount).toBe(0);
-        expect(updateCall.input.cluster).toBe('my-cluster');
+        assert.strictEqual(updateCall.constructor.name, 'UpdateServiceCommand');
+        assert.strictEqual(updateCall.input.desiredCount, 0);
+        assert.strictEqual(updateCall.input.cluster, 'my-cluster');
 
         const deleteCall = mockSend.mock.calls[1][0];
-        expect(deleteCall.constructor.name).toBe('DeleteServiceCommand');
-        expect(deleteCall.input.force).toBe(true);
-        expect(deleteCall.input.cluster).toBe('my-cluster');
+        assert.strictEqual(deleteCall.constructor.name, 'DeleteServiceCommand');
+        assert.strictEqual(deleteCall.input.force, true);
+        assert.strictEqual(deleteCall.input.cluster, 'my-cluster');
       });
 
       it('should handle ServiceNotFoundException during scale down', async () => {

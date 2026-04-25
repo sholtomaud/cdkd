@@ -1,35 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { ResourceNotFoundException } from '@aws-sdk/client-bedrock-agentcore-control';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
-vi.mock('../../../src/utils/aws-clients.js', () => ({
+vi.mock('../../../src/utils/aws-clients.ts', () => ({
   getAwsClients: () => ({
     bedrockAgentCoreControl: { send: mockSend },
   }),
 }));
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
-import { AgentCoreRuntimeProvider } from '../../../src/provisioning/providers/agentcore-runtime-provider.js';
+import { AgentCoreRuntimeProvider } from '../../../src/provisioning/providers/agentcore-runtime-provider.ts';
 
 describe('AgentCoreRuntimeProvider', () => {
   let provider: AgentCoreRuntimeProvider;
@@ -56,7 +57,7 @@ describe('AgentCoreRuntimeProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('runtime-12345');
+      assert.strictEqual(result.physicalId, 'runtime-12345');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/runtime-12345',
         AgentRuntimeId: 'runtime-12345',
@@ -65,9 +66,9 @@ describe('AgentCoreRuntimeProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateAgentRuntimeCommand');
-      expect(createCall.input.agentRuntimeName).toBe('my-runtime');
-      expect(createCall.input.roleArn).toBe('arn:aws:iam::123456789012:role/my-role');
+      assert.strictEqual(createCall.constructor.name, 'CreateAgentRuntimeCommand');
+      assert.strictEqual(createCall.input.agentRuntimeName, 'my-runtime');
+      assert.strictEqual(createCall.input.roleArn, 'arn:aws:iam::123456789012:role/my-role');
     });
 
     it('should pass optional properties to CreateAgentRuntimeCommand', async () => {
@@ -87,10 +88,10 @@ describe('AgentCoreRuntimeProvider', () => {
       });
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.description).toBe('Test runtime');
-      expect(createCall.input.networkConfiguration).toEqual({ networkMode: 'PUBLIC' });
-      expect(createCall.input.protocolConfiguration).toEqual({ serverProtocol: 'MCP' });
-      expect(createCall.input.environmentVariables).toEqual({ ENV_VAR: 'value' });
+      assert.strictEqual(createCall.input.description, 'Test runtime');
+      assert.deepStrictEqual(createCall.input.networkConfiguration, { networkMode: 'PUBLIC' });
+      assert.deepStrictEqual(createCall.input.protocolConfiguration, { serverProtocol: 'MCP' });
+      assert.deepStrictEqual(createCall.input.environmentVariables, { ENV_VAR: 'value' });
     });
 
     it('should throw ProvisioningError when AgentRuntimeName is missing', async () => {
@@ -145,8 +146,8 @@ describe('AgentCoreRuntimeProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('runtime-12345');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'runtime-12345');
+      assert.strictEqual(result.wasReplaced, false);
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/runtime-12345',
         AgentRuntimeId: 'runtime-12345',
@@ -155,9 +156,9 @@ describe('AgentCoreRuntimeProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const updateCall = mockSend.mock.calls[0][0];
-      expect(updateCall.constructor.name).toBe('UpdateAgentRuntimeCommand');
-      expect(updateCall.input.agentRuntimeId).toBe('runtime-12345');
-      expect(updateCall.input.description).toBe('Updated description');
+      assert.strictEqual(updateCall.constructor.name, 'UpdateAgentRuntimeCommand');
+      assert.strictEqual(updateCall.input.agentRuntimeId, 'runtime-12345');
+      assert.strictEqual(updateCall.input.description, 'Updated description');
     });
 
     it('should throw ProvisioningError when RoleArn is missing', async () => {
@@ -209,8 +210,8 @@ describe('AgentCoreRuntimeProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const deleteCall = mockSend.mock.calls[0][0];
-      expect(deleteCall.constructor.name).toBe('DeleteAgentRuntimeCommand');
-      expect(deleteCall.input.agentRuntimeId).toBe('runtime-12345');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteAgentRuntimeCommand');
+      assert.strictEqual(deleteCall.input.agentRuntimeId, 'runtime-12345');
     });
 
     it('should skip deletion when runtime does not exist (ResourceNotFoundException)', async () => {
@@ -258,8 +259,8 @@ describe('AgentCoreRuntimeProvider', () => {
       );
 
       const getCall = mockSend.mock.calls[0][0];
-      expect(getCall.constructor.name).toBe('GetAgentRuntimeCommand');
-      expect(getCall.input.agentRuntimeId).toBe('runtime-12345');
+      assert.strictEqual(getCall.constructor.name, 'GetAgentRuntimeCommand');
+      assert.strictEqual(getCall.input.agentRuntimeId, 'runtime-12345');
     });
 
     it('should return AgentRuntimeArn from GetAgentRuntime', async () => {
@@ -285,7 +286,7 @@ describe('AgentCoreRuntimeProvider', () => {
         'AgentRuntimeId'
       );
 
-      expect(id).toBe('runtime-12345');
+      assert.strictEqual(id, 'runtime-12345');
       expect(mockSend).not.toHaveBeenCalled();
     });
 
@@ -301,7 +302,7 @@ describe('AgentCoreRuntimeProvider', () => {
         'AgentRuntimeName'
       );
 
-      expect(name).toBe('my-runtime');
+      assert.strictEqual(name, 'my-runtime');
     });
 
     it('should throw for unsupported attribute', async () => {

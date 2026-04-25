@@ -1,34 +1,35 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 import { S3Client, S3ServiceException, NoSuchKey } from '@aws-sdk/client-s3';
-import { LockManager } from '../../../src/state/lock-manager.js';
-import type { LockInfo } from '../../../src/types/state.js';
-import type { StateBackendConfig } from '../../../src/types/config.js';
-import { LockError } from '../../../src/utils/error-handler.js';
+import { LockManager } from '../../../src/state/lock-manager.ts';
+import type { LockInfo } from '../../../src/types/state.ts';
+import type { StateBackendConfig } from '../../../src/types/config.ts';
+import { LockError } from '../../../src/utils/error-handler.ts';
 
 // Mock the S3Client
 vi.mock('@aws-sdk/client-s3', async () => {
   const actual = await vi.importActual<typeof import('@aws-sdk/client-s3')>('@aws-sdk/client-s3');
   return {
     ...actual,
-    S3Client: vi.fn().mockImplementation(() => ({
-      send: vi.fn(),
+    S3Client: mock.fn().mockImplementation(() => ({
+      send: mock.fn(),
     })),
   };
 });
 
 // Mock logger to suppress output during tests
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
   }),
 }));
 
@@ -42,7 +43,7 @@ describe('LockManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    s3Client = { send: vi.fn() };
+    s3Client = { send: mock.fn() };
     lockManager = new LockManager(s3Client as unknown as S3Client, config);
   });
 
@@ -90,18 +91,18 @@ describe('LockManager', () => {
 
       const result = await lockManager.acquireLock('test-stack', 'test-owner', 'deploy');
 
-      expect(result).toBe(true);
+      assert.strictEqual(result, true);
 
       const putCall = s3Client.send.mock.calls[0][0];
-      expect(putCall.input.Bucket).toBe('test-bucket');
-      expect(putCall.input.Key).toBe('stacks/test-stack/lock.json');
-      expect(putCall.input.IfNoneMatch).toBe('*');
+      assert.strictEqual(putCall.input.Bucket, 'test-bucket');
+      assert.strictEqual(putCall.input.Key, 'stacks/test-stack/lock.json');
+      assert.strictEqual(putCall.input.IfNoneMatch, '*');
 
       const lockBody = JSON.parse(putCall.input.Body) as LockInfo;
-      expect(lockBody.owner).toBe('test-owner');
-      expect(lockBody.operation).toBe('deploy');
-      expect(lockBody.timestamp).toBeDefined();
-      expect(lockBody.expiresAt).toBeDefined();
+      assert.strictEqual(lockBody.owner, 'test-owner');
+      assert.strictEqual(lockBody.operation, 'deploy');
+      assert.notStrictEqual(lockBody.timestamp, undefined);
+      assert.notStrictEqual(lockBody.expiresAt, undefined);
       expect(lockBody.expiresAt).toBeGreaterThan(lockBody.timestamp);
     });
 
@@ -123,7 +124,7 @@ describe('LockManager', () => {
 
       const result = await lockManager.acquireLock('test-stack', 'my-user');
 
-      expect(result).toBe(false);
+      assert.strictEqual(result, false);
     });
 
     it('should clean up expired lock and re-acquire', async () => {
@@ -150,7 +151,7 @@ describe('LockManager', () => {
 
       const result = await lockManager.acquireLock('test-stack', 'new-user');
 
-      expect(result).toBe(true);
+      assert.strictEqual(result, true);
       // Verify 4 S3 calls: PutObject(fail), GetObject, DeleteObject, PutObject(success)
       expect(s3Client.send).toHaveBeenCalledTimes(4);
     });
@@ -179,7 +180,7 @@ describe('LockManager', () => {
 
       const result = await lockManager.acquireLock('test-stack', 'my-user');
 
-      expect(result).toBe(false);
+      assert.strictEqual(result, false);
     });
 
     it('should throw LockError on unexpected S3 error', async () => {
@@ -187,7 +188,7 @@ describe('LockManager', () => {
       s3Error.name = 'AccessDenied';
       s3Client.send.mockRejectedValueOnce(s3Error);
 
-      await expect(lockManager.acquireLock('test-stack')).rejects.toThrow(LockError);
+      await assert.rejects(async () => { await lockManager.acquireLock('test-stack'); }, LockError);
     });
   });
 
@@ -206,7 +207,7 @@ describe('LockManager', () => {
 
       const result = await lockManager.getLockInfo('test-stack');
 
-      expect(result).toEqual(lockInfo);
+      assert.deepStrictEqual(result, lockInfo);
     });
 
     it('should return null when no lock exists', async () => {
@@ -215,7 +216,7 @@ describe('LockManager', () => {
 
       const result = await lockManager.getLockInfo('test-stack');
 
-      expect(result).toBeNull();
+      assert.strictEqual(result, null);
     });
   });
 
@@ -226,14 +227,14 @@ describe('LockManager', () => {
       await lockManager.releaseLock('test-stack');
 
       const deleteCall = s3Client.send.mock.calls[0][0];
-      expect(deleteCall.input.Bucket).toBe('test-bucket');
-      expect(deleteCall.input.Key).toBe('stacks/test-stack/lock.json');
+      assert.strictEqual(deleteCall.input.Bucket, 'test-bucket');
+      assert.strictEqual(deleteCall.input.Key, 'stacks/test-stack/lock.json');
     });
 
     it('should throw LockError on failure', async () => {
       s3Client.send.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(lockManager.releaseLock('test-stack')).rejects.toThrow(LockError);
+      await assert.rejects(async () => { await lockManager.releaseLock('test-stack'); }, LockError);
     });
   });
 
@@ -394,7 +395,7 @@ describe('LockManager', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(LockError);
         const lockError = error as LockError;
-        expect(lockError.message).toContain('test-stack');
+        assert.ok((lockError.message).includes('test-stack'));
       }
     });
   });
@@ -413,8 +414,8 @@ describe('LockManager', () => {
       expect(lockBody).toHaveProperty('operation', 'deploy');
       expect(lockBody).toHaveProperty('timestamp');
       expect(lockBody).toHaveProperty('expiresAt');
-      expect(typeof lockBody.timestamp).toBe('number');
-      expect(typeof lockBody.expiresAt).toBe('number');
+      assert.strictEqual(typeof lockBody.timestamp, 'number');
+      assert.strictEqual(typeof lockBody.expiresAt, 'number');
       expect(lockBody.expiresAt).toBeGreaterThan(lockBody.timestamp);
     });
 

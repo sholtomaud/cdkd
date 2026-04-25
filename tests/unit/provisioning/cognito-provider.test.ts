@@ -1,40 +1,41 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
 
 // Mock AWS clients before importing the provider
-const mockSend = vi.fn();
+const mockSend = mock.fn();
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', async () => {
   const actual = await vi.importActual('@aws-sdk/client-cognito-identity-provider');
   return {
     ...actual,
-    CognitoIdentityProviderClient: vi.fn().mockImplementation(() => ({
+    CognitoIdentityProviderClient: mock.fn().mockImplementation(() => ({
       send: mockSend,
       config: { region: () => Promise.resolve('us-east-1') },
     })),
   };
 });
 
-vi.mock('../../../src/utils/logger.js', () => {
+vi.mock('../../../src/utils/logger.ts', () => {
   const childLogger = {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
+    child: mock.fn().mockReturnThis(),
   };
   return {
     getLogger: () => ({
       child: () => childLogger,
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   };
 });
 
 import { ResourceNotFoundException } from '@aws-sdk/client-cognito-identity-provider';
-import { CognitoUserPoolProvider } from '../../../src/provisioning/providers/cognito-provider.js';
+import { CognitoUserPoolProvider } from '../../../src/provisioning/providers/cognito-provider.ts';
 
 describe('CognitoUserPoolProvider', () => {
   let provider: CognitoUserPoolProvider;
@@ -57,7 +58,7 @@ describe('CognitoUserPoolProvider', () => {
         UserPoolName: 'my-user-pool',
       });
 
-      expect(result.physicalId).toBe('us-east-1_abc123');
+      assert.strictEqual(result.physicalId, 'us-east-1_abc123');
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:cognito-idp:us-east-1:123456789012:userpool/us-east-1_abc123',
         ProviderName: 'cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123',
@@ -67,7 +68,7 @@ describe('CognitoUserPoolProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.constructor.name).toBe('CreateUserPoolCommand');
+      assert.strictEqual(createCall.constructor.name, 'CreateUserPoolCommand');
     });
 
     it('should pass PoolName as UserPoolName', async () => {
@@ -83,7 +84,7 @@ describe('CognitoUserPoolProvider', () => {
       });
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.PoolName).toBe('custom-pool-name');
+      assert.strictEqual(createCall.input.PoolName, 'custom-pool-name');
     });
 
     it('should use logicalId as PoolName when UserPoolName is not provided', async () => {
@@ -97,7 +98,7 @@ describe('CognitoUserPoolProvider', () => {
       await provider.create('MyUserPool', 'AWS::Cognito::UserPool', {});
 
       const createCall = mockSend.mock.calls[0][0];
-      expect(createCall.input.PoolName).toBe('MyUserPool');
+      assert.strictEqual(createCall.input.PoolName, 'MyUserPool');
     });
 
     it('should throw ProvisioningError on failure', async () => {
@@ -146,8 +147,8 @@ describe('CognitoUserPoolProvider', () => {
         }
       );
 
-      expect(result.physicalId).toBe('us-east-1_abc123');
-      expect(result.wasReplaced).toBe(false);
+      assert.strictEqual(result.physicalId, 'us-east-1_abc123');
+      assert.strictEqual(result.wasReplaced, false);
       expect(result.attributes).toEqual({
         Arn: 'arn:aws:cognito-idp:us-east-1:123456789012:userpool/us-east-1_abc123',
         ProviderName: 'cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123',
@@ -157,18 +158,18 @@ describe('CognitoUserPoolProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const updateCall = mockSend.mock.calls[0][0];
-      expect(updateCall.constructor.name).toBe('UpdateUserPoolCommand');
-      expect(updateCall.input.UserPoolId).toBe('us-east-1_abc123');
+      assert.strictEqual(updateCall.constructor.name, 'UpdateUserPoolCommand');
+      assert.strictEqual(updateCall.input.UserPoolId, 'us-east-1_abc123');
       expect(updateCall.input.Policies).toEqual({
         PasswordPolicy: {
           MinimumLength: 12,
           RequireUppercase: true,
         },
       });
-      expect(updateCall.input.MfaConfiguration).toBe('OPTIONAL');
+      assert.strictEqual(updateCall.input.MfaConfiguration, 'OPTIONAL');
 
       const describeCall = mockSend.mock.calls[1][0];
-      expect(describeCall.constructor.name).toBe('DescribeUserPoolCommand');
+      assert.strictEqual(describeCall.constructor.name, 'DescribeUserPoolCommand');
     });
 
     it('should not pass PoolName in update params (PoolName is immutable)', async () => {
@@ -197,7 +198,7 @@ describe('CognitoUserPoolProvider', () => {
 
       const updateCall = mockSend.mock.calls[0][0];
       // PoolName should NOT be in the update params since it's immutable
-      expect(updateCall.input.PoolName).toBeUndefined();
+      assert.strictEqual(updateCall.input.PoolName, undefined);
     });
   });
 
@@ -217,8 +218,8 @@ describe('CognitoUserPoolProvider', () => {
       expect(mockSend).toHaveBeenCalledTimes(2);
 
       const deleteCall = mockSend.mock.calls[1][0];
-      expect(deleteCall.constructor.name).toBe('DeleteUserPoolCommand');
-      expect(deleteCall.input.UserPoolId).toBe('us-east-1_abc123');
+      assert.strictEqual(deleteCall.constructor.name, 'DeleteUserPoolCommand');
+      assert.strictEqual(deleteCall.input.UserPoolId, 'us-east-1_abc123');
     });
 
     it('should handle ResourceNotFoundException gracefully', async () => {

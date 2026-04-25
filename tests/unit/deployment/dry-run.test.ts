@@ -1,30 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DeployEngine } from '../../../src/deployment/deploy-engine.js';
-import type { CloudFormationTemplate } from '../../../src/types/resource.js';
-import type { ResourceChange, StackState } from '../../../src/types/state.js';
+import { describe, it, beforeEach, afterEach, before as beforeAll, after as afterAll, mock } from 'node:test';
+import assert from 'node:assert';
+import { DeployEngine } from '../../../src/deployment/deploy-engine.ts';
+import type { CloudFormationTemplate } from '../../../src/types/resource.ts';
+import type { ResourceChange, StackState } from '../../../src/types/state.ts';
 
 // Mock logger
-vi.mock('../../../src/utils/logger.js', () => ({
+vi.mock('../../../src/utils/logger.ts', () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: mock.fn(),
+    info: mock.fn(),
+    warn: mock.fn(),
+    error: mock.fn(),
     child: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      debug: mock.fn(),
+      info: mock.fn(),
+      warn: mock.fn(),
+      error: mock.fn(),
     }),
   }),
 }));
 
 // Mock IntrinsicFunctionResolver - resolve returns properties as-is, others are no-ops
-vi.mock('../../../src/deployment/intrinsic-function-resolver.js', () => ({
-  IntrinsicFunctionResolver: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
-    resolveParameters: vi.fn().mockReturnValue({}),
-    evaluateConditions: vi.fn().mockResolvedValue({}),
+vi.mock('../../../src/deployment/intrinsic-function-resolver.ts', () => ({
+  IntrinsicFunctionResolver: mock.fn().mockImplementation(() => ({
+    resolve: mock.fn().mockImplementation((props: unknown) => Promise.resolve(props)),
+    resolveParameters: mock.fn().mockReturnValue({}),
+    evaluateConditions: mock.fn().mockResolvedValue({}),
   })),
 }));
 
@@ -74,20 +75,20 @@ describe('DeployEngine - Dry Run Mode', () => {
     vi.clearAllMocks();
 
     mockProvider = {
-      create: vi.fn().mockResolvedValue({
+      create: mock.fn().mockResolvedValue({
         physicalId: 'new-physical-id',
         attributes: { Arn: 'arn:aws:s3:::my-bucket' },
       }),
-      update: vi.fn().mockResolvedValue({
+      update: mock.fn().mockResolvedValue({
         physicalId: 'existing-physical-id',
         wasReplaced: false,
       }),
-      delete: vi.fn().mockResolvedValue(undefined),
-      getAttribute: vi.fn(),
+      delete: mock.fn().mockResolvedValue(undefined),
+      getAttribute: mock.fn(),
     };
 
     mockStateBackend = {
-      getState: vi.fn().mockResolvedValue({
+      getState: mock.fn().mockResolvedValue({
         state: {
           version: 1,
           stackName,
@@ -97,23 +98,23 @@ describe('DeployEngine - Dry Run Mode', () => {
         },
         etag: 'etag-123',
       }),
-      saveState: vi.fn().mockResolvedValue('etag-456'),
+      saveState: mock.fn().mockResolvedValue('etag-456'),
     };
 
     mockLockManager = {
-      acquireLockWithRetry: vi.fn().mockResolvedValue(true),
-      releaseLock: vi.fn().mockResolvedValue(undefined),
+      acquireLockWithRetry: mock.fn().mockResolvedValue(true),
+      releaseLock: mock.fn().mockResolvedValue(undefined),
     };
 
     mockDagBuilder = {
-      buildGraph: vi.fn().mockReturnValue({}),
-      getExecutionLevels: vi.fn().mockReturnValue([['MyBucket']]),
+      buildGraph: mock.fn().mockReturnValue({}),
+      getExecutionLevels: mock.fn().mockReturnValue([['MyBucket']]),
     };
 
     mockDiffCalculator = {
-      calculateDiff: vi.fn(),
-      hasChanges: vi.fn().mockReturnValue(true),
-      filterByType: vi.fn().mockImplementation(
+      calculateDiff: mock.fn(),
+      hasChanges: mock.fn().mockReturnValue(true),
+      filterByType: mock.fn().mockImplementation(
         (changes: Map<string, ResourceChange>, type: string) => {
           return Array.from(changes.values()).filter((c) => c.changeType === type);
         }
@@ -121,8 +122,8 @@ describe('DeployEngine - Dry Run Mode', () => {
     };
 
     mockProviderRegistry = {
-      getProvider: vi.fn().mockReturnValue(mockProvider),
-      validateResourceTypes: vi.fn(),
+      getProvider: mock.fn().mockReturnValue(mockProvider),
+      validateResourceTypes: mock.fn(),
     };
   });
 
@@ -178,11 +179,11 @@ describe('DeployEngine - Dry Run Mode', () => {
       const engine = createDryRunEngine();
       const result = await engine.deploy(stackName, template);
 
-      expect(result.created).toBe(1);
-      expect(result.updated).toBe(0);
-      expect(result.deleted).toBe(0);
-      expect(result.unchanged).toBe(0);
-      expect(result.stackName).toBe(stackName);
+      assert.strictEqual(result.created, 1);
+      assert.strictEqual(result.updated, 0);
+      assert.strictEqual(result.deleted, 0);
+      assert.strictEqual(result.unchanged, 0);
+      assert.strictEqual(result.stackName, stackName);
 
       // Provider should NOT be called
       expect(mockProvider.create).not.toHaveBeenCalled();
@@ -239,11 +240,11 @@ describe('DeployEngine - Dry Run Mode', () => {
       const engine = createDryRunEngine();
       const result = await engine.deploy(stackName, template);
 
-      expect(result.created).toBe(0);
-      expect(result.updated).toBe(1);
-      expect(result.deleted).toBe(0);
-      expect(result.unchanged).toBe(0);
-      expect(result.stackName).toBe(stackName);
+      assert.strictEqual(result.created, 0);
+      assert.strictEqual(result.updated, 1);
+      assert.strictEqual(result.deleted, 0);
+      assert.strictEqual(result.unchanged, 0);
+      assert.strictEqual(result.stackName, stackName);
 
       // Provider should NOT be called
       expect(mockProvider.create).not.toHaveBeenCalled();
@@ -296,11 +297,11 @@ describe('DeployEngine - Dry Run Mode', () => {
       const engine = createDryRunEngine();
       const result = await engine.deploy(stackName, template);
 
-      expect(result.created).toBe(0);
-      expect(result.updated).toBe(0);
-      expect(result.deleted).toBe(1);
-      expect(result.unchanged).toBe(0);
-      expect(result.stackName).toBe(stackName);
+      assert.strictEqual(result.created, 0);
+      assert.strictEqual(result.updated, 0);
+      assert.strictEqual(result.deleted, 1);
+      assert.strictEqual(result.unchanged, 0);
+      assert.strictEqual(result.stackName, stackName);
 
       // Provider should NOT be called
       expect(mockProvider.create).not.toHaveBeenCalled();
@@ -405,11 +406,11 @@ describe('DeployEngine - Dry Run Mode', () => {
       const engine = createDryRunEngine();
       const result = await engine.deploy(stackName, template);
 
-      expect(result.created).toBe(1);
-      expect(result.updated).toBe(1);
-      expect(result.deleted).toBe(1);
-      expect(result.unchanged).toBe(1);
-      expect(result.stackName).toBe(stackName);
+      assert.strictEqual(result.created, 1);
+      assert.strictEqual(result.updated, 1);
+      assert.strictEqual(result.deleted, 1);
+      assert.strictEqual(result.unchanged, 1);
+      assert.strictEqual(result.stackName, stackName);
 
       // No provider methods should be called
       expect(mockProvider.create).not.toHaveBeenCalled();
@@ -507,7 +508,7 @@ describe('DeployEngine - Dry Run Mode', () => {
       const dryRunResult = await dryRunEngine.deploy(stackName, template);
 
       expect(mockProvider.create).not.toHaveBeenCalled();
-      expect(dryRunResult.created).toBe(1);
+      assert.strictEqual(dryRunResult.created, 1);
 
       // Reset mocks
       vi.clearAllMocks();
@@ -547,7 +548,7 @@ describe('DeployEngine - Dry Run Mode', () => {
       const normalResult = await normalEngine.deploy(stackName, template);
 
       expect(mockProvider.create).toHaveBeenCalledTimes(1);
-      expect(normalResult.created).toBe(1);
+      assert.strictEqual(normalResult.created, 1);
 
       // Normal mode should save state
       expect(mockStateBackend.saveState).toHaveBeenCalled();
@@ -589,10 +590,10 @@ describe('DeployEngine - Dry Run Mode', () => {
       const engine = createDryRunEngine();
       const result = await engine.deploy(stackName, template);
 
-      expect(result.created).toBe(0);
-      expect(result.updated).toBe(0);
-      expect(result.deleted).toBe(0);
-      expect(result.unchanged).toBe(1);
+      assert.strictEqual(result.created, 0);
+      assert.strictEqual(result.updated, 0);
+      assert.strictEqual(result.deleted, 0);
+      assert.strictEqual(result.unchanged, 1);
 
       // No provider calls and no state save
       expect(mockProvider.create).not.toHaveBeenCalled();
